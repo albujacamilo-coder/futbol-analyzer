@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mundial FIFA 2026 — Análisis Probabilístico</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2 class="sr-only">Simulador del Mundial FIFA 2026</h2>
+<div class="app">
+  <div class="hdr">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div>
+        <h1>Mundial FIFA 2026 <span id="ubadge" style="display:none" class="ubadge">✓ Actualizado</span></h1>
+        <p id="hdr-sub" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          Presiona <strong>▶ Actualizar modelo</strong> para calcular probabilidades
+        </p>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <button class="btn btn-run" id="btnrun" onclick="runModel()" style="flex-shrink:0;white-space:nowrap">▶ Actualizar modelo</button>
+        <div id="run-st" style="display:none;font-size:11px;color:#666;text-align:right">
+          <span id="lmsg">Procesando...</span>
+          <div class="pbar" style="margin-top:4px;max-width:160px"><div class="pfill" id="pfill"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab" onclick="showTab('res',this)">✏️ Resultados</button>
+    <button class="tab active" onclick="showTab('partidos',this)">📊 Partidos</button>
+    <button class="tab" onclick="showTab('grupos',this)">🏟️ Grupos</button>
+    <button class="tab" onclick="showTab('bracket',this)">🏆 Bracket</button>
+    <button class="tab" onclick="showTab('ranking',this)">📈 Probabilidades</button>
+    <button class="tab" onclick="showTab('tracker',this)">🎯 Aciertos</button>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div id="panel-res" class="panel">
+    <div class="bbar2">
+      <button class="btn btn-sync" id="btn-sync" onclick="syncResults()">🔄 Sincronizar resultados</button>
+      <button class="btn" onclick="exportData()" title="Descargar resultados como archivo JSON">⬇️ Exportar</button>
+      <button class="btn" onclick="importData()" title="Cargar resultados desde archivo JSON">⬆️ Importar</button>
+      <button class="btn" onclick="clearAll()">↺ Limpiar</button>
+    </div>
+    <div id="api-status" style="display:none"></div>
+    <div id="mcont"></div>
+  </div>
+
+  <!-- PARTIDOS -->
+  <div id="panel-partidos" class="panel active">
+    <div class="rfilt">
+      <button class="rfbtn active" onclick="filt('all',this)">Todos</button>
+      <button class="rfbtn" onclick="filt('grupos',this)">Grupos</button>
+      <button class="rfbtn" onclick="filt('r32',this)">R32</button>
+      <button class="rfbtn" onclick="filt('r16',this)">Octavos</button>
+      <button class="rfbtn" onclick="filt('qf',this)">Cuartos</button>
+      <button class="rfbtn" onclick="filt('sf',this)">Semis</button>
+      <button class="rfbtn" onclick="filt('final',this)">Final</button>
+    </div>
+    <div id="pcont"></div>
+  </div>
+
+  <!-- GRUPOS -->
+  <div id="panel-grupos" class="panel">
+    <div id="gcont"></div>
+  </div>
+
+  <!-- BRACKET -->
+  <div id="panel-bracket" class="panel">
+    <div class="br-legend">
+      <div class="br-legend-item"><div class="br-dot win"></div><span>Avanza (favorito)</span></div>
+      <div class="br-legend-item"><div class="br-dot lose"></div><span>Eliminado</span></div>
+      <div class="br-legend-item"><span style="font-size:11px;color:#666">Camino más probable según Bayesiano + Monte Carlo</span></div>
+    </div>
+    <div id="brcont"></div>
+  </div>
+
+  <!-- PROBABILIDADES -->
+  <div id="panel-ranking" class="panel">
+    <div class="scards" id="scards"></div>
+    <p class="slabel">Ranking de probabilidades</p>
+    <table class="rtbl">
+      <thead>
+        <tr>
+          <th>#</th><th>Selección</th><th>Conf.</th>
+          <th class="r">Fuerza</th><th class="r">%Grupos</th>
+          <th class="r">%R16</th><th class="r">%QF</th>
+          <th class="r">%Final</th><th class="r">%Cam.</th><th>Prob.</th>
+        </tr>
+      </thead>
+      <tbody id="rbody"></tbody>
+    </table>
+  </div>
+
+  <!-- ACIERTOS -->
+  <div id="panel-tracker" class="panel">
+    <div id="tracker-cont"></div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
