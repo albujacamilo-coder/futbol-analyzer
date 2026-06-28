@@ -2,6 +2,12 @@
 const SUPABASE_URL = 'https://rhmrmrmvqwthhgihzvog.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJobXJtcm12cXd0aGhnaWh6dm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1OTM4MjYsImV4cCI6MjA5ODE2OTgyNn0.5VkR9LsNQ4eG81Im5deV567qEN1iFLVTzAg3S3_6UXs';
 
+// ── MODO ADMIN ────────────────────────────────────────────────────────────────
+// Para acceder como admin: futbol-analyzer.vercel.app?admin=futbol2026admin
+// Cambia "futbol2026admin" por la clave secreta que quieras
+const ADMIN_SECRET = 'futbol2026admin';
+const IS_ADMIN = new URLSearchParams(window.location.search).get('admin') === ADMIN_SECRET;
+
 // Cliente Supabase simplificado (sin librería externa)
 const sb = {
   async getAll() {
@@ -2772,7 +2778,17 @@ function getFx(){
 function setP(pct,msg){ document.getElementById('pfill').style.width=pct+'%'; if(msg)document.getElementById('lmsg').textContent=msg; }
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 function filt(r,btn){ CRF=r; SEARCH_Q=''; document.querySelectorAll('.rfbtn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderPartidos(); }
-function showTab(id,btn){ document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active')); document.getElementById('panel-'+id).classList.add('active'); btn.classList.add('active'); }
+function showTab(id,btn){
+  // Bloquear pestaña de Resultados si no es admin
+  if(id==='res'&&!IS_ADMIN){
+    alert('Esta sección es solo para administradores.');
+    return;
+  }
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  btn.classList.add('active');
+}
 
 // ── RUN MODEL ─────────────────────────────────────────────────────────────────
 async function runModel(){
@@ -2973,6 +2989,18 @@ function showApiStatus(msg,type,persistent=false){
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
+// Ocultar elementos admin si no es admin
+if(!IS_ADMIN){
+  // Ocultar tab de Resultados
+  document.querySelectorAll('.tab').forEach(function(t){
+    if(t.textContent.includes('Resultados')) t.style.display='none';
+  });
+  // Ocultar botón Actualizar modelo del header
+  const btnrun=document.getElementById('btnrun');
+  if(btnrun) btnrun.style.display='none';
+  const runSt=document.getElementById('run-st');
+  if(runSt) runSt.style.display='none';
+}
 initStr();
 const _fx={};
 GS=calcGS(STR,_fx);
@@ -2993,14 +3021,16 @@ Object.keys(TD).forEach(t=>{
 
 // Cargar resultados — primero Supabase, luego localStorage como fallback
 const hadSaved = loadFromStorage();
+let loadedCloud = false;
 
 // Cargar desde Supabase de forma asíncrona
 loadFromSupabase().then(function(loaded){
+  loadedCloud = loaded;
   if(loaded){
     buildMatchList();
-    document.getElementById('hdr-sub').innerHTML='☁️ Resultados cargados desde la nube · Presiona <strong>▶ Actualizar modelo</strong> para recalcular';
-  } else if(hadSaved){
-    document.getElementById('hdr-sub').innerHTML='💾 Resultados cargados localmente · Presiona <strong>▶ Actualizar modelo</strong> para recalcular';
+    document.getElementById('hdr-sub').innerHTML = IS_ADMIN
+      ? '☁️ Resultados cargados desde la nube · Presiona <strong>▶ Actualizar modelo</strong> para recalcular'
+      : '☁️ Análisis actualizado · Explora los pronósticos del Mundial FIFA 2026';
   }
 });
 
@@ -3012,10 +3042,14 @@ renderRanking();
 renderPartidos();
 renderTracker();
 
-if(hadSaved){
-  document.getElementById('hdr-sub').innerHTML='💾 Resultados cargados · Presiona <strong>▶ Actualizar modelo</strong> para recalcular';
+if(hadSaved||loadedCloud){
+  document.getElementById('hdr-sub').innerHTML = IS_ADMIN
+    ? '💾 Resultados cargados · Presiona <strong>▶ Actualizar modelo</strong> para recalcular'
+    : '☁️ Análisis actualizado · Explora los pronósticos del Mundial FIFA 2026';
 } else {
-  document.getElementById('hdr-sub').innerHTML='Presiona <strong>▶ Actualizar modelo</strong> para calcular probabilidades';
+  document.getElementById('hdr-sub').innerHTML = IS_ADMIN
+    ? 'Presiona <strong>▶ Actualizar modelo</strong> para calcular probabilidades'
+    : '☁️ Cargando análisis del Mundial FIFA 2026...';
 }
 
 // ── AUTO-SYNC AL ABRIR ────────────────────────────────────────────────────────
