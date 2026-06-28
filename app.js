@@ -2791,6 +2791,21 @@ function showTab(id,btn){
 }
 
 // ── RUN MODEL ─────────────────────────────────────────────────────────────────
+// Versión silenciosa del modelo — corre en background sin UI de loading
+async function runModelSilent(){
+  try{
+    const fx=getFx(); const u=bayesUpd();
+    GS=calcGS(u,fx);
+    BD=calcBD(u);
+    MCP=calcProbs(u,fx);
+    PD=buildPD(u,fx);
+    renderGroups(); renderBracket(); renderRanking(); renderPartidos(); renderTracker();
+    const koSection=document.getElementById('ko-section');
+    if(koSection) koSection.innerHTML=renderKnockoutInputs();
+    document.getElementById('ubadge').style.display='inline-flex';
+  } catch(e){ console.warn('Error en runModelSilent:', e); }
+}
+
 async function runModel(){
   const btn=document.getElementById('btnrun'),st=document.getElementById('run-st');
   btn.disabled=true; btn.textContent='⏳ Calculando...';
@@ -3090,13 +3105,18 @@ function initApp(){
   renderRanking();
   renderPartidos();
   renderTracker();
-  loadFromSupabase().then(function(loaded){
+  loadFromSupabase().then(async function(loaded){
     loadedCloud=loaded;
     if(loaded){
       buildMatchList();
       document.getElementById('hdr-sub').innerHTML=IS_ADMIN
-        ?'☁️ Resultados cargados desde la nube · Presiona <strong>▶ Actualizar modelo</strong> para recalcular'
-        :'☁️ Análisis actualizado · Explora los pronósticos';
+        ?'☁️ Resultados cargados · Presiona <strong>▶ Actualizar modelo</strong> para recalcular'
+        :'☁️ Calculando probabilidades...';
+      // Auto-run silencioso del modelo para todos
+      await runModelSilent();
+      document.getElementById('hdr-sub').innerHTML=IS_ADMIN
+        ?'☁️ Modelo actualizado · '+Object.keys(getFx()).length+' resultados cargados'
+        :'☁️ Análisis listo · Explora los pronósticos del Mundial FIFA 2026';
     }
   });
   // Auto-sync
