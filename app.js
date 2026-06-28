@@ -3,10 +3,124 @@ const SUPABASE_URL = 'https://rhmrmrmvqwthhgihzvog.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJobXJtcm12cXd0aGhnaWh6dm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1OTM4MjYsImV4cCI6MjA5ODE2OTgyNn0.5VkR9LsNQ4eG81Im5deV567qEN1iFLVTzAg3S3_6UXs';
 
 // ── MODO ADMIN ────────────────────────────────────────────────────────────────
-// Para acceder como admin: futbol-analyzer.vercel.app?admin=futbol2026admin
-// Cambia "futbol2026admin" por la clave secreta que quieras
 const ADMIN_SECRET = 'futbol2026admin';
 const IS_ADMIN = new URLSearchParams(window.location.search).get('admin') === ADMIN_SECRET;
+
+// ── SISTEMA DE ACCESO PREMIUM ─────────────────────────────────────────────────
+// IS_PREMIUM: true si admin, si tiene código válido guardado, o si es modo preview
+let IS_PREMIUM = IS_ADMIN;
+
+// Verificar código guardado en localStorage al cargar
+const SAVED_CODE = localStorage.getItem('fsp_access_code');
+const SAVED_CODE_TYPE = localStorage.getItem('fsp_access_type');
+const SAVED_CODE_EXPIRY = localStorage.getItem('fsp_access_expiry');
+
+if(SAVED_CODE && SAVED_CODE_EXPIRY){
+  const expiry = new Date(SAVED_CODE_EXPIRY);
+  if(expiry > new Date()){
+    IS_PREMIUM = true;
+  } else {
+    // Código expirado — limpiar
+    localStorage.removeItem('fsp_access_code');
+    localStorage.removeItem('fsp_access_type');
+    localStorage.removeItem('fsp_access_expiry');
+  }
+}
+
+// Verificar código contra Supabase
+async function verifyCode(code){
+  try{
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/codigos_acceso?codigo=eq.${encodeURIComponent(code.toUpperCase().trim())}&select=*`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    const rows = res.ok ? await res.json() : [];
+    if(!rows.length) return { valid: false, msg: 'Código no encontrado. Verifica que esté bien escrito.' };
+    const r = rows[0];
+    if(r.caduca_en && new Date(r.caduca_en) < new Date()) return { valid: false, msg: 'Este código ha expirado.' };
+    return { valid: true, tipo: r.tipo, caduca_en: r.caduca_en };
+  } catch(e){
+    return { valid: false, msg: 'Error de conexión. Intenta de nuevo.' };
+  }
+}
+
+// Mostrar modal de ingreso de código
+function showPremiumModal(){
+  const existing = document.getElementById('premium-modal');
+  if(existing) existing.remove();
+
+  const html = `<div class="modal-box" style="max-width:400px;text-align:center">
+    <div class="modal-hdr" style="justify-content:center;border-bottom:none;padding-bottom:0">
+      <div>
+        <div style="font-size:36px;margin-bottom:8px">🔐</div>
+        <div class="modal-title">Acceso Premium</div>
+        <div class="modal-sub" style="margin-top:4px">Ingresa tu código para desbloquear el análisis completo</div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <input id="premium-code-input" type="text" placeholder="Ej: FSP-MUN-XXXX"
+        style="width:100%;padding:12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:inherit;outline:none;text-align:center;text-transform:uppercase;letter-spacing:2px;box-sizing:border-box;margin-bottom:10px"
+        onfocus="this.style.borderColor='#4caf50'" onblur="this.style.borderColor='#ddd'"
+        onkeydown="if(event.key==='Enter') activatePremiumCode()">
+      <div id="premium-code-msg" style="font-size:12px;color:#c00;margin-bottom:10px;min-height:16px"></div>
+      <button id="premium-code-btn" onclick="activatePremiumCode()"
+        style="width:100%;padding:12px;background:#111;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;font-weight:500;margin-bottom:10px">
+        Activar acceso →
+      </button>
+      <div style="font-size:11px;color:#aaa">¿No tienes código? <a href="#" onclick="document.getElementById('premium-modal').remove()" style="color:#4caf50">Ver versión gratuita</a></div>
+    </div>
+  </div>`;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'premium-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  overlay.innerHTML = html;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('premium-code-input').focus(), 100);
+}
+
+// Activar código ingresado
+async function activatePremiumCode(){
+  const input = document.getElementById('premium-code-input');
+  const btn = document.getElementById('premium-code-btn');
+  const msg = document.getElementById('premium-code-msg');
+  const code = (input.value || '').trim().toUpperCase();
+
+  if(!code){ msg.textContent = 'Ingresa tu código de acceso.'; return; }
+
+  btn.textContent = 'Verificando...';
+  btn.disabled = true;
+  msg.textContent = '';
+
+  const result = await verifyCode(code);
+
+  if(result.valid){
+    // Guardar en localStorage
+    localStorage.setItem('fsp_access_code', code);
+    localStorage.setItem('fsp_access_type', result.tipo||'premium');
+    localStorage.setItem('fsp_access_expiry', result.caduca_en || '2027-01-01');
+    // Recargar la página para aplicar acceso premium
+    document.getElementById('premium-modal').remove();
+    location.reload();
+  } else {
+    msg.textContent = result.msg;
+    btn.textContent = 'Activar acceso →';
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+// Mostrar banner premium en features bloqueadas
+function premiumBanner(feature){
+  return `<div style="text-align:center;padding:24px 16px;background:#f9f9f9;border-radius:10px;border:1.5px dashed #ddd;margin:12px 0">
+    <div style="font-size:28px;margin-bottom:8px">🔐</div>
+    <div style="font-size:14px;font-weight:600;color:#111;margin-bottom:6px">${feature}</div>
+    <div style="font-size:12px;color:#888;margin-bottom:14px">Esta función es exclusiva de FútbolStats Pro</div>
+    <button onclick="showPremiumModal()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:500">
+      🔓 Activar acceso premium
+    </button>
+  </div>`;
+}
 
 // Cliente Supabase simplificado (sin librería externa)
 const sb = {
@@ -1422,28 +1536,24 @@ function openMatchModal(key){
     // ── Tabs: Goles / Corners / Tarjetas / Sorpresa (solo si aplica) ──
     '<div style="display:flex;border-bottom:1px solid #e0e0e0;background:#fafafa">',
       '<button id="mtab-goles" onclick="switchModalTab(\'goles\')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid #111;color:#111;font-family:inherit">⚽ Goles</button>',
-      '<button id="mtab-corners" onclick="switchModalTab(\'corners\')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit">📐 Corners</button>',
-      '<button id="mtab-tarjetas" onclick="switchModalTab(\'tarjetas\')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit">🟨 Tarjetas</button>',
-      isUpset ? '<button id="mtab-upset" onclick="switchModalTab(\'upset\')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;background:#fef9e7;cursor:pointer;border-bottom:2px solid transparent;color:#92400e;font-family:inherit">🚨 Sorpresa</button>' : '',
+      IS_PREMIUM ? '<button id="mtab-corners" onclick="switchModalTab(\'corners\')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit">📐 Corners</button>' : '<button onclick="showPremiumModal()" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;color:#ccc;font-family:inherit">📐 🔐</button>',
+      IS_PREMIUM ? '<button id="mtab-tarjetas" onclick="switchModalTab(\'tarjetas\')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit">🟨 Tarjetas</button>' : '<button onclick="showPremiumModal()" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;color:#ccc;font-family:inherit">🟨 🔐</button>',
+      isUpset ? (IS_PREMIUM ? '<button id="mtab-upset" onclick="switchModalTab(\'upset\')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;background:#fef9e7;cursor:pointer;border-bottom:2px solid transparent;color:#92400e;font-family:inherit">🚨 Sorpresa</button>' : '<button onclick="showPremiumModal()" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;background:#fef9e7;cursor:pointer;color:#ccc;font-family:inherit">🚨 🔐</button>') : '',
     '</div>',
 
     // ── Tab Goles ──
     '<div id="mtab-content-goles">',
-      golesHtml,
+      IS_PREMIUM ? golesHtml : golesHtml + premiumBanner('xG detallado, Half Time, Top 5 resultados y más'),
     '</div>',
 
     // ── Tab Corners ──
-    '<div id="mtab-content-corners" style="display:none">',
-      cornersHtml,
-    '</div>',
+    IS_PREMIUM ? '<div id="mtab-content-corners" style="display:none">'+cornersHtml+'</div>' : '',
 
     // ── Tab Tarjetas ──
-    '<div id="mtab-content-tarjetas" style="display:none">',
-      tarjetasHtml,
-    '</div>',
+    IS_PREMIUM ? '<div id="mtab-content-tarjetas" style="display:none">'+tarjetasHtml+'</div>' : '',
 
     // ── Tab Sorpresa (solo si aplica) ──
-    isUpset ? '<div id="mtab-content-upset" style="display:none">'+upsetHtml+'</div>' : '',
+    isUpset && IS_PREMIUM ? '<div id="mtab-content-upset" style="display:none">'+upsetHtml+'</div>' : '',
 
     '</div>'
   ].join('');
@@ -1839,6 +1949,10 @@ function closeGroupModal(){
 
 // ── PERFIL DE SELECCIÓN ───────────────────────────────────────────────────────
 function openTeamProfile(name){
+  if(!IS_PREMIUM){
+    showPremiumModal();
+    return;
+  }
   const existing=document.getElementById('team-modal');
   if(existing) existing.remove();
 
@@ -2526,6 +2640,11 @@ function renderTracker(){
   const cont=document.getElementById('tracker-cont');
   if(!cont) return;
 
+  if(!IS_PREMIUM){
+    cont.innerHTML=premiumBanner('Tracker de Aciertos — ve qué tan bien predice el modelo');
+    return;
+  }
+
   const phases=calcTracker();
   const totalMatches=phases.reduce((s,p)=>s+p.total,0);
   const totalHitR=phases.reduce((s,p)=>s+p.hitR,0);
@@ -3078,6 +3197,18 @@ function initApp(){
     if(btnrun) btnrun.style.display='none';
     const runSt=document.getElementById('run-st');
     if(runSt) runSt.style.display='none';
+  }
+
+  // Mostrar botón Premium para usuarios free
+  if(!IS_PREMIUM){
+    const hdr=document.querySelector('.hdr');
+    if(hdr){
+      const btnPrem=document.createElement('button');
+      btnPrem.innerHTML='⚡ Hazte Premium';
+      btnPrem.style.cssText='padding:8px 16px;background:#4caf50;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap;margin-top:8px';
+      btnPrem.onclick=showPremiumModal;
+      hdr.querySelector('div').appendChild(btnPrem);
+    }
   }
   initStr();
   const _fx={};
