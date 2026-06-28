@@ -911,23 +911,85 @@ function renderBrMatch(m,isFinal=false){
   </div>`;
 }
 function renderBracket(){
-  if(!BD){ document.getElementById('brcont').innerHTML='<div class="infobox">Actualiza el modelo para ver el bracket.</div>'; return; }
-  const rnds=[
-    {t:'Ronda de 32',d:'28 jun – 3 jul · 16 partidos',ms:BD.r32},
-    {t:'Octavos de final',d:'4 – 7 jul · 8 partidos',ms:BD.r16},
-    {t:'Cuartos de final',d:'9 – 11 jul · 4 partidos',ms:BD.qf},
-    {t:'Semifinales',d:'14 – 15 jul · 2 partidos',ms:BD.sf},
+  const cont=document.getElementById('brcont');
+  if(!BD){ cont.innerHTML='<div class="infobox">Actualiza el modelo para ver el bracket.</div>'; return; }
+
+  // Función para renderizar una celda de equipo en el bracket
+  function teamCell(name, isWinner, pChamp){
+    const pct=(MCP[name]?.p_champ||pChamp||0).toFixed(1);
+    return`<div style="
+      background:${isWinner?'#d4edda':'#f9f9f9'};
+      border:1px solid ${isWinner?'#86efac':'#e0e0e0'};
+      border-radius:6px;padding:5px 8px;
+      display:flex;justify-content:space-between;align-items:center;
+      min-width:120px;max-width:140px;gap:4px">
+      <span style="font-size:11px;font-weight:${isWinner?'600':'400'};color:${isWinner?'#1a5e34':'#333'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">${name}</span>
+      <span style="font-size:9px;color:${isWinner?'#1a5e34':'#aaa'};white-space:nowrap">${pct}%</span>
+    </div>`;
+  }
+
+  // Función para renderizar un partido en el bracket
+  function bracketMatch(m, phase){
+    if(!m||!m.ta) return'<div style="min-width:140px"></div>';
+    const wA=m.winner===m.ta, wB=m.winner===m.tb;
+    const ko=getKOFx();
+    const hasResult=ko[m.id]&&ko[m.id][0]!==undefined;
+    const scoreStr=hasResult?`<span style="font-size:10px;font-weight:600;color:#1a5e34">${ko[m.id][0]}-${ko[m.id][1]}</span>`
+      :`<span style="font-size:9px;color:#aaa">${m.xgRStr}</span>`;
+
+    return`<div style="display:flex;flex-direction:column;gap:3px;position:relative">
+      <div style="font-size:9px;color:#aaa;margin-bottom:2px;text-align:center">${m.id}</div>
+      ${teamCell(m.ta, wA, MCP[m.ta]?.p_champ)}
+      <div style="text-align:center;font-size:9px;color:#888;padding:1px 0">${scoreStr}</div>
+      ${teamCell(m.tb, wB, MCP[m.tb]?.p_champ)}
+    </div>`;
+  }
+
+  // Construir el árbol visual por fases
+  // Estructura: R32 (16) → R16 (8) → QF (4) → SF (2) → Final (1)
+  const phases = [
+    {label:'R32', matches: BD.r32, cols: 2},
+    {label:'Octavos', matches: BD.r16, cols: 2},
+    {label:'Cuartos', matches: BD.qf, cols: 2},
+    {label:'Semis', matches: BD.sf, cols: 2},
+    {label:'Final', matches: [BD.fin], cols: 1},
   ];
-  let html='<div class="br-rounds">';
-  rnds.forEach(({t,d,ms})=>{
-    html+=`<div class="br-round"><div class="br-round-hdr"><span class="br-round-title">${t}</span><span class="br-round-date">${d}</span></div><div class="br-matches-grid">`;
-    ms.forEach(m=>{ html+=renderBrMatch(m,false); });
-    html+='</div></div>';
+
+  // Render en formato horizontal scrollable
+  let html=`<div style="overflow-x:auto;padding-bottom:8px">
+  <div style="display:flex;gap:16px;align-items:flex-start;min-width:900px;padding:8px 4px">`;
+
+  phases.forEach(({label, matches, cols})=>{
+    const perCol = Math.ceil(matches.length / cols);
+    html+=`<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+      <div style="font-size:10px;font-weight:600;color:#888;text-align:center;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;padding:4px 8px;background:#f5f5f5;border-radius:6px">${label}</div>
+      <div style="display:flex;flex-direction:column;gap:${label==='R32'?'8px':label==='Octavos'?'32px':label==='Cuartos'?'72px':label==='Semis'?'152px':'220px'}">
+        ${matches.map(m=>bracketMatch(m, label)).join('')}
+      </div>
+    </div>`;
+
+    // Flecha conectora entre fases (excepto después de la final)
+    if(label!=='Final'){
+      html+=`<div style="display:flex;align-items:center;color:#ccc;font-size:16px;align-self:center;flex-shrink:0">→</div>`;
+    }
   });
-  html+='</div>';
-  html+=renderBrMatch(BD.fin,true);
-  html+=`<p class="br-note">* Camino más probable: el favorito analítico gana cada partido. xG rond. = goles esperados redondeados (umbral 0.75) · HT = half time · % cam. = probabilidad de campeón según ${NSIMS.toLocaleString()} sims MC</p>`;
-  document.getElementById('brcont').innerHTML=html;
+
+  html+=`</div></div>`;
+
+  // Leyenda
+  html+=`<div style="display:flex;gap:12px;align-items:center;margin-top:8px;padding:8px 12px;background:#f9f9f9;border-radius:8px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="width:12px;height:12px;background:#d4edda;border:1px solid #86efac;border-radius:3px"></div>
+      <span style="font-size:11px;color:#555">Favorito / avanza</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="width:12px;height:12px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:3px"></div>
+      <span style="font-size:11px;color:#555">Eliminado</span>
+    </div>
+    <span style="font-size:11px;color:#aaa">% = probabilidad de campeón · xG rond. = goles esperados</span>
+  </div>`;
+
+  cont.innerHTML=html;
 }
 
 // ── RENDER PARTIDOS ───────────────────────────────────────────────────────────
@@ -2287,6 +2349,7 @@ function switchTeamTab(tab, safeId){
 
 // ── COMPARADOR DE EQUIPOS ─────────────────────────────────────────────────────
 function openComparator(nameA, nameB){
+  if(!IS_PREMIUM){ showPremiumModal(); return; }
   // Limpiar y validar
   nameB=(nameB||'').trim();
   if(!nameB){ alert('Escribe el nombre de un equipo para comparar'); return; }
@@ -2526,6 +2589,7 @@ function closeComparator(){
 
 // Comparador directo desde Probabilidades
 function openComparatorDirect(){
+  if(!IS_PREMIUM){ showPremiumModal(); return; }
   const existing=document.getElementById('comparator-direct-modal');
   if(existing) existing.remove();
 
@@ -2572,6 +2636,19 @@ function openComparatorDirect(){
 function renderRanking(){
   const sorted=Object.entries(MCP).sort((a,b)=>b[1].p_champ-a[1].p_champ);
   const maxP=sorted[0]?sorted[0][1].p_champ:1;
+
+  if(!IS_PREMIUM){
+    document.getElementById('rbody').innerHTML='';
+    document.getElementById('scards').innerHTML=`
+      <div style="grid-column:1/-1;padding:20px;text-align:center;background:#f9f9f9;border-radius:10px;border:1.5px dashed #ddd">
+        <div style="font-size:28px;margin-bottom:8px">🔐</div>
+        <div style="font-size:14px;font-weight:600;color:#111;margin-bottom:6px">Ranking de probabilidades</div>
+        <div style="font-size:12px;color:#888;margin-bottom:14px">Ve qué equipo tiene más chances de ganar el Mundial según el modelo</div>
+        <button onclick="showPremiumModal()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:500">🔓 Activar acceso premium</button>
+      </div>`;
+    return;
+  }
+
   document.getElementById('rbody').innerHTML=sorted.map(([n,p],i)=>{
     const med=i===0?`<span class="m1">1</span>`:i===1?`<span class="m2">2</span>`:i===2?`<span class="m3">3</span>`:i+1;
     const home=HOME[n]?`<span class="chip">sede</span>`:'';
