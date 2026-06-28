@@ -49,25 +49,51 @@ function showPremiumModal(){
   const existing = document.getElementById('premium-modal');
   if(existing) existing.remove();
 
-  const html = `<div class="modal-box" style="max-width:400px;text-align:center">
-    <div class="modal-hdr" style="justify-content:center;border-bottom:none;padding-bottom:0">
-      <div>
+  const html = `<div class="modal-box" style="max-width:400px">
+    <div class="modal-hdr">
+      <div style="text-align:center;width:100%">
         <div style="font-size:36px;margin-bottom:8px">🔐</div>
-        <div class="modal-title">Acceso Premium</div>
-        <div class="modal-sub" style="margin-top:4px">Ingresa tu código para desbloquear el análisis completo</div>
+        <div class="modal-title">FútbolStats Pro</div>
+        <div class="modal-sub" style="margin-top:4px">Desbloquea el análisis completo</div>
       </div>
+      <button class="modal-close" onclick="document.getElementById('premium-modal').remove()" style="position:absolute;top:12px;right:12px">&#x2715;</button>
     </div>
-    <div class="modal-section">
-      <input id="premium-code-input" type="text" placeholder="Ej: FSP-MUN-XXXX"
-        style="width:100%;padding:12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:inherit;outline:none;text-align:center;text-transform:uppercase;letter-spacing:2px;box-sizing:border-box;margin-bottom:10px"
+
+    <!-- Tabla de beneficios -->
+    <div class="modal-section" style="padding-top:0">
+      <div style="background:#f9f9f9;border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Incluye acceso a:</div>
+        ${[
+          ['⚽','xG exacto, Half Time y Top 5 resultados'],
+          ['📊','Over/Under todas las líneas'],
+          ['🎯','BTTS y probabilidad primer gol'],
+          ['📐','Análisis completo de corners'],
+          ['🟨','Análisis completo de tarjetas'],
+          ['🚨','Detector de partidos sorpresa'],
+          ['👤','Perfil detallado de selecciones'],
+          ['⚡','Comparador de equipos'],
+          ['🏆','Tracker de aciertos del modelo'],
+        ].map(([icon,text])=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:#333">
+          <span>${icon}</span><span>${text}</span>
+        </div>`).join('')}
+      </div>
+
+      <input id="premium-code-input" type="text" placeholder="Ingresa tu código de acceso"
+        style="width:100%;padding:12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:inherit;outline:none;text-align:center;text-transform:uppercase;letter-spacing:2px;box-sizing:border-box;margin-bottom:8px"
         onfocus="this.style.borderColor='#4caf50'" onblur="this.style.borderColor='#ddd'"
         onkeydown="if(event.key==='Enter') activatePremiumCode()">
-      <div id="premium-code-msg" style="font-size:12px;color:#c00;margin-bottom:10px;min-height:16px"></div>
+      <div id="premium-code-msg" style="font-size:12px;color:#c00;margin-bottom:10px;min-height:16px;text-align:center"></div>
       <button id="premium-code-btn" onclick="activatePremiumCode()"
         style="width:100%;padding:12px;background:#111;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;font-weight:500;margin-bottom:10px">
-        Activar acceso →
+        Activar código →
       </button>
-      <div style="font-size:11px;color:#aaa">¿No tienes código? <a href="#" onclick="document.getElementById('premium-modal').remove()" style="color:#4caf50">Ver versión gratuita</a></div>
+      <div style="text-align:center;padding:10px;background:#f0fdf4;border-radius:8px;border:1px solid #86efac">
+        <div style="font-size:12px;color:#1a5e34;font-weight:600;margin-bottom:4px">¿Aún no tienes acceso?</div>
+        <div style="font-size:11px;color:#555;margin-bottom:8px">Mundial Pack · Acceso completo hasta julio 2026</div>
+        <button onclick="alert('¡Próximamente! Link de compra disponible muy pronto.')" style="padding:8px 16px;background:#4caf50;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600">
+          ⚡ Obtener acceso premium →
+        </button>
+      </div>
     </div>
   </div>`;
 
@@ -942,7 +968,7 @@ function renderPCard(m){
         <div class="pbox${hiD?' hi':''}"><div class="pv">${(m.pd*100).toFixed(0)}%</div><div class="pl">Empate</div></div>
         <div class="pbox${hiB?' hi':''}"><div class="pv">${(m.pw_b*100).toFixed(0)}%</div><div class="pl">Gana ${m.tb.split(' ')[0]}</div></div>
       </div>
-      <div class="quick-strip">
+      ${IS_PREMIUM ? `<div class="quick-strip">
         <div class="qs-xg-pill">
           <div class="qs-xg-team">
             <span class="qs-xg-name">${m.ta.split(' ')[0]}</span>
@@ -975,9 +1001,14 @@ function renderPCard(m){
             <span class="qs-pill-val">${(m.p_over15*100).toFixed(0)}%</span>
           </div>
         </div>
-      </div>
-      <button class="expand-btn" onclick="openMatchModal('${modalKey}')">
-        <span class="expand-label">Ver análisis completo</span>
+      </div>` : `<div style="margin:8px 0;padding:10px 12px;background:#f9f9f9;border-radius:8px;border:1px dashed #ddd;display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="font-size:11px;color:#888">
+          🔐 <strong style="color:#111">xG · O/U · BTTS · Corners · Tarjetas</strong> disponibles en Premium
+        </div>
+        <button onclick="showPremiumModal()" style="padding:5px 10px;background:#111;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;font-weight:500">Ver más →</button>
+      </div>`}
+      <button class="expand-btn" onclick="${IS_PREMIUM ? `openMatchModal('${modalKey}')` : 'showPremiumModal()'}">
+        <span class="expand-label">${IS_PREMIUM ? 'Ver análisis completo' : '🔐 Desbloquear análisis completo'}</span>
         <span class="expand-icon">↗</span>
       </button>
     </div>
