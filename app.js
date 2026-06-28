@@ -1,3 +1,90 @@
+// ── SUPABASE CONFIG ───────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://rhmrmrmvqwthhgihzvog.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_QojdHB8sRLY7L0UsWgVh5g__N5c65Wt';
+
+// Cliente Supabase simplificado (sin librería externa)
+const sb = {
+  async getAll() {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/resultados?select=*`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    return res.ok ? await res.json() : [];
+  },
+  async upsert(clave, goles_local, goles_visita, tipo = 'grupo') {
+    // Primero buscar si existe
+    const check = await fetch(
+      `${SUPABASE_URL}/rest/v1/resultados?clave=eq.${encodeURIComponent(clave)}&select=id`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    const existing = check.ok ? await check.json() : [];
+
+    if (existing.length > 0) {
+      // Update
+      await fetch(`${SUPABASE_URL}/rest/v1/resultados?clave=eq.${encodeURIComponent(clave)}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ goles_local, goles_visita, tipo })
+      });
+    } else {
+      // Insert
+      await fetch(`${SUPABASE_URL}/rest/v1/resultados`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ clave, goles_local, goles_visita, tipo })
+      });
+    }
+  },
+  async deleteAll() {
+    await fetch(`${SUPABASE_URL}/rest/v1/resultados?id=gt.0`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+  }
+};
+
+// ── CARGAR RESULTADOS DESDE SUPABASE ─────────────────────────────────────────
+async function loadFromSupabase() {
+  try {
+    const rows = await sb.getAll();
+    if (!rows.length) return false;
+    rows.forEach(r => {
+      if (r.tipo === 'ko') {
+        if (!KO_RR[r.clave]) KO_RR[r.clave] = [undefined, undefined];
+        KO_RR[r.clave] = [r.goles_local, r.goles_visita];
+      } else {
+        RR[r.clave] = [r.goles_local, r.goles_visita];
+      }
+    });
+    return true;
+  } catch(e) {
+    console.warn('Error cargando Supabase:', e);
+    return false;
+  }
+}
+
+// ── GUARDAR EN SUPABASE ───────────────────────────────────────────────────────
+async function saveToSupabase(clave, goles_local, goles_visita, tipo = 'grupo') {
+  try {
+    await sb.upsert(clave, goles_local, goles_visita, tipo);
+  } catch(e) {
+    console.warn('Error guardando en Supabase:', e);
+  }
+}
+
 const GRP={A:["México","Sudáfrica","Corea del Sur","Chequia"],B:["Canadá","Qatar","Suiza","Bosnia"],C:["Brasil","Marruecos","Haití","Escocia"],D:["EE.UU.","Paraguay","Australia","Turquía"],E:["Alemania","Curazao","Costa de Marfil","Ecuador"],F:["Países Bajos","Japón","Túnez","Suecia"],G:["Bélgica","Egipto","Irán","Nueva Zelanda"],H:["España","Cabo Verde","Arabia Saudita","Uruguay"],I:["Francia","Senegal","Noruega","Iraq"],J:["Argentina","Argelia","Austria","Jordania"],K:["Portugal","Colombia","Uzbekistán","DR Congo"],L:["Inglaterra","Croacia","Ghana","Panamá"]};
 
 const TD={
@@ -2569,6 +2656,10 @@ function setKO(matchId,idx,val){
   if(!KO_RR[matchId]) KO_RR[matchId]=[undefined,undefined];
   KO_RR[matchId][idx]=v;
   saveToStorage();
+  // Guardar en Supabase si ambos goles están completos
+  if(KO_RR[matchId][0]!==undefined&&KO_RR[matchId][1]!==undefined){
+    saveToSupabase(matchId, KO_RR[matchId][0], KO_RR[matchId][1], 'ko');
+  }
 }
 function getKOFx(){ const fx={}; for(const[k,r] of Object.entries(KO_RR)) if(r&&r[0]!==undefined&&r[1]!==undefined) fx[k]=r; return fx; }
 
@@ -2647,7 +2738,20 @@ function buildMatchList(){
   document.getElementById('mcont').innerHTML=html;
 }
 
-function setR(k,idx,val){ const v=parseInt(val); if(isNaN(v)||val===''){ if(RR[k])RR[k][idx]=undefined; saveToStorage(); return; } if(!RR[k])RR[k]=[undefined,undefined]; RR[k][idx]=v; saveToStorage(); }
+function setR(k,idx,val){
+  const v=parseInt(val);
+  if(isNaN(v)||val===''){
+    if(RR[k])RR[k][idx]=undefined;
+    saveToStorage(); return;
+  }
+  if(!RR[k])RR[k]=[undefined,undefined];
+  RR[k][idx]=v;
+  saveToStorage();
+  // Guardar en Supabase si ambos goles están completos
+  if(RR[k][0]!==undefined&&RR[k][1]!==undefined){
+    saveToSupabase(k, RR[k][0], RR[k][1], 'grupo');
+  }
+}
 function getFx(){
   const fx={};
   const seen=new Set();
@@ -2826,6 +2930,12 @@ async function syncResults(){
     if(synced>0){
       buildMatchList();
       saveToStorage();
+      // Guardar todos los resultados en Supabase
+      for(const[k,r] of Object.entries(RR)){
+        if(r&&r[0]!==undefined&&r[1]!==undefined){
+          saveToSupabase(k, r[0], r[1], 'grupo');
+        }
+      }
       const needManual=countNeedManual();
       const msg=needManual>0
         ?'✅ '+synced+' sincronizado(s) · ⚠️ Hay partidos en amarillo que necesitan resultado manual — revísalos abajo'
@@ -2881,8 +2991,18 @@ Object.keys(TD).forEach(t=>{
   };
 });
 
-// Cargar resultados guardados antes de renderizar
+// Cargar resultados — primero Supabase, luego localStorage como fallback
 const hadSaved = loadFromStorage();
+
+// Cargar desde Supabase de forma asíncrona
+loadFromSupabase().then(function(loaded){
+  if(loaded){
+    buildMatchList();
+    document.getElementById('hdr-sub').innerHTML='☁️ Resultados cargados desde la nube · Presiona <strong>▶ Actualizar modelo</strong> para recalcular';
+  } else if(hadSaved){
+    document.getElementById('hdr-sub').innerHTML='💾 Resultados cargados localmente · Presiona <strong>▶ Actualizar modelo</strong> para recalcular';
+  }
+});
 
 PD=buildPD(STR,_fx);
 buildMatchList();
