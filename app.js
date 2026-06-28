@@ -2988,99 +2988,154 @@ function showApiStatus(msg,type,persistent=false){
   if(!persistent) setTimeout(()=>{ if(el.parentNode) el.remove(); },8000);
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
-// Ocultar elementos admin si no es admin
-if(!IS_ADMIN){
-  // Ocultar tab de Resultados
-  document.querySelectorAll('.tab').forEach(function(t){
-    if(t.textContent.includes('Resultados')) t.style.display='none';
-  });
-  // Ocultar botón Actualizar modelo del header
-  const btnrun=document.getElementById('btnrun');
-  if(btnrun) btnrun.style.display='none';
-  const runSt=document.getElementById('run-st');
-  if(runSt) runSt.style.display='none';
-}
-initStr();
-const _fx={};
-GS=calcGS(STR,_fx);
-BD=calcBD(STR);
-MCP={};
-Object.keys(TD).forEach(t=>{
-  const s=STR[t]||0.3;
-  MCP[t]={
-    p_group:+(Math.min(s*140,98)).toFixed(1),
-    p_r32:+(Math.min(s*100,85)).toFixed(1),
-    p_r16:+(Math.min(s*70,70)).toFixed(1),
-    p_qf:+(Math.min(s*45,55)).toFixed(1),
-    p_sf:+(Math.min(s*28,40)).toFixed(1),
-    p_final:+(Math.min(s*16,28)).toFixed(1),
-    p_champ:+(Math.min(s*9,18)).toFixed(1),
-  };
-});
+// ── NAVEGACIÓN ENTRE COMPETICIONES ───────────────────────────────────────────
+let CURRENT_COMPETITION = 'mundial2026';
 
-// Cargar resultados — primero Supabase, luego localStorage como fallback
-const hadSaved = loadFromStorage();
-let loadedCloud = false;
+const COMPETITION_NAMES = {
+  'mundial2026': '🌍 Mundial FIFA 2026',
+  'premier':     '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League',
+  'laliga':      '🇪🇸 La Liga',
+  'bundesliga':  '🇩🇪 Bundesliga',
+  'seriea':      '🇮🇹 Serie A',
+  'ligue1':      '🇫🇷 Ligue 1'
+};
 
-// Cargar desde Supabase de forma asíncrona
-loadFromSupabase().then(function(loaded){
-  loadedCloud = loaded;
-  if(loaded){
-    buildMatchList();
-    document.getElementById('hdr-sub').innerHTML = IS_ADMIN
-      ? '☁️ Resultados cargados desde la nube · Presiona <strong>▶ Actualizar modelo</strong> para recalcular'
-      : '☁️ Análisis actualizado · Explora los pronósticos del Mundial FIFA 2026';
+const COMING_SOON = ['premier','laliga','bundesliga','seriea','ligue1'];
+
+function enterCompetition(id){
+  // Ligas aún no disponibles
+  if(COMING_SOON.includes(id)){
+    const name=COMPETITION_NAMES[id]||id;
+    showComingSoonModal(name);
+    return;
   }
-});
-
-PD=buildPD(STR,_fx);
-buildMatchList();
-renderGroups();
-renderBracket();
-renderRanking();
-renderPartidos();
-renderTracker();
-
-if(hadSaved||loadedCloud){
-  document.getElementById('hdr-sub').innerHTML = IS_ADMIN
-    ? '💾 Resultados cargados · Presiona <strong>▶ Actualizar modelo</strong> para recalcular'
-    : '☁️ Análisis actualizado · Explora los pronósticos del Mundial FIFA 2026';
-} else {
-  document.getElementById('hdr-sub').innerHTML = IS_ADMIN
-    ? 'Presiona <strong>▶ Actualizar modelo</strong> para calcular probabilidades'
-    : '☁️ Cargando análisis del Mundial FIFA 2026...';
+  CURRENT_COMPETITION=id;
+  document.getElementById('home-screen').style.display='none';
+  document.getElementById('main-app').style.display='block';
+  const titleEl=document.getElementById('app-title');
+  if(titleEl) titleEl.innerHTML=(COMPETITION_NAMES[id]||id)+' <span id="ubadge" style="display:none" class="ubadge">✓ Actualizado</span>';
+  // Inicializar la app para esta competición
+  initApp();
 }
 
-// ── AUTO-SYNC AL ABRIR ────────────────────────────────────────────────────────
-// Sincroniza resultados automáticamente al cargar la app
-// Si falla (sin internet) no pasa nada, el usuario puede hacerlo manual
-(async function autoSync(){
-  try {
-    const res = await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json');
-    if(!res.ok) return;
-    const data = await res.json();
-    const matches = data.matches || [];
-    const allTeams = Object.values(GRP).flat();
-    let synced = 0;
-    matches.forEach(function(m){
-      if(!m.score||!m.score.ft) return;
-      const homeGoals=m.score.ft[0], awayGoals=m.score.ft[1];
-      if(homeGoals===null||homeGoals===undefined) return;
-      if(awayGoals===null||awayGoals===undefined) return;
-      const home=mapTeam(m.team1||''), away=mapTeam(m.team2||'');
-      if(!home||!away) return;
-      if(!allTeams.includes(home)||!allTeams.includes(away)) return;
-      RR[home+'|'+away]=[parseInt(homeGoals),parseInt(awayGoals)];
-      synced++;
+function goHome(){
+  document.getElementById('main-app').style.display='none';
+  document.getElementById('home-screen').style.display='block';
+}
+
+function showComingSoonModal(name){
+  const existing=document.getElementById('coming-soon-modal');
+  if(existing) existing.remove();
+  const html=`<div class="modal-box" style="max-width:360px;text-align:center">
+    <div class="modal-hdr" style="justify-content:center">
+      <div>
+        <div class="modal-title">${name}</div>
+        <div class="modal-sub">Próximamente disponible</div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div style="font-size:40px;margin-bottom:12px">⏳</div>
+      <div style="font-size:13px;color:#555;line-height:1.6;margin-bottom:16px">
+        Esta liga estará disponible próximamente.<br>
+        Estamos calibrando el modelo estadístico para darte el mejor análisis posible.
+      </div>
+      <button onclick="document.getElementById('coming-soon-modal').remove()"
+        style="padding:10px 24px;background:#111;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:500">
+        Entendido
+      </button>
+    </div>
+  </div>`;
+  const overlay=document.createElement('div');
+  overlay.id='coming-soon-modal';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  overlay.onclick=function(e){ if(e.target===overlay) overlay.remove(); };
+  overlay.innerHTML=html;
+  document.body.appendChild(overlay);
+}
+
+function initApp(){
+  // Ocultar elementos admin si no es admin
+  if(!IS_ADMIN){
+    document.querySelectorAll('.tab').forEach(function(t){
+      if(t.textContent.includes('Resultados')) t.style.display='none';
     });
-    if(synced>0){
+    const btnrun=document.getElementById('btnrun');
+    if(btnrun) btnrun.style.display='none';
+    const runSt=document.getElementById('run-st');
+    if(runSt) runSt.style.display='none';
+  }
+  initStr();
+  const _fx={};
+  GS=calcGS(STR,_fx);
+  BD=calcBD(STR);
+  MCP={};
+  Object.keys(TD).forEach(t=>{
+    const s=STR[t]||0.3;
+    MCP[t]={
+      p_group:+(Math.min(s*140,98)).toFixed(1),
+      p_r32:+(Math.min(s*100,85)).toFixed(1),
+      p_r16:+(Math.min(s*70,70)).toFixed(1),
+      p_qf:+(Math.min(s*45,55)).toFixed(1),
+      p_sf:+(Math.min(s*28,40)).toFixed(1),
+      p_final:+(Math.min(s*16,28)).toFixed(1),
+      p_champ:+(Math.min(s*9,18)).toFixed(1),
+    };
+  });
+  const hadSaved=loadFromStorage();
+  let loadedCloud=false;
+  PD=buildPD(STR,_fx);
+  buildMatchList();
+  renderGroups();
+  renderBracket();
+  renderRanking();
+  renderPartidos();
+  renderTracker();
+  loadFromSupabase().then(function(loaded){
+    loadedCloud=loaded;
+    if(loaded){
       buildMatchList();
-      const needManual=countNeedManual();
-      const msg = needManual>0
-        ? `✅ ${synced} resultado(s) cargados automáticamente · ⚠️ Hay partidos en amarillo que necesitan resultado manual — revísalos abajo`
-        : `✅ ${synced} resultado(s) cargados automáticamente · ¡Todo al día! Presiona Actualizar modelo 🎉`;
-      showApiStatus(msg, needManual>0?'warn':'ok', needManual>0);
+      document.getElementById('hdr-sub').innerHTML=IS_ADMIN
+        ?'☁️ Resultados cargados desde la nube · Presiona <strong>▶ Actualizar modelo</strong> para recalcular'
+        :'☁️ Análisis actualizado · Explora los pronósticos';
     }
-  } catch(e){ /* Sin internet — silencioso */ }
-})();
+  });
+  // Auto-sync
+  (async function autoSync(){
+    try{
+      const res=await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json');
+      if(!res.ok) return;
+      const data=await res.json();
+      const matches=data.matches||[];
+      const allTeams=Object.values(GRP).flat();
+      let synced=0;
+      matches.forEach(function(m){
+        if(!m.score||!m.score.ft) return;
+        const homeGoals=m.score.ft[0],awayGoals=m.score.ft[1];
+        if(homeGoals===null||homeGoals===undefined) return;
+        if(awayGoals===null||awayGoals===undefined) return;
+        const home=mapTeam(m.team1||''),away=mapTeam(m.team2||'');
+        if(!home||!away) return;
+        if(!allTeams.includes(home)||!allTeams.includes(away)) return;
+        RR[home+'|'+away]=[parseInt(homeGoals),parseInt(awayGoals)];
+        synced++;
+      });
+      if(synced>0){
+        buildMatchList();
+        saveToStorage();
+        for(const[k,r] of Object.entries(RR)){
+          if(r&&r[0]!==undefined&&r[1]!==undefined) saveToSupabase(k,r[0],r[1],'grupo');
+        }
+        const needManual=countNeedManual();
+        const msg=needManual>0
+          ?`✅ ${synced} resultado(s) cargados · ⚠️ Hay partidos en amarillo que necesitan resultado manual`
+          :`✅ ${synced} resultado(s) cargados · ¡Todo al día! Presiona Actualizar modelo 🎉`;
+        if(IS_ADMIN) showApiStatus(msg,needManual>0?'warn':'ok',needManual>0);
+      }
+    } catch(e){ /* silencioso */ }
+  })();
+  document.getElementById('hdr-sub').innerHTML=IS_ADMIN
+    ?'Presiona <strong>▶ Actualizar modelo</strong> para calcular probabilidades'
+    :'☁️ Cargando análisis...';
+}
+// La app se inicializa cuando el usuario selecciona una competición
+// Ver función enterCompetition() arriba
