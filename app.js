@@ -1,6 +1,6 @@
 // ── SUPABASE CONFIG ───────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://rhmrmrmvqwthhgihzvog.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_QojdHB8sRLY7L0UsWgVh5g__N5c65Wt';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJobXJtcm12cXd0aGhnaWh6dm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1OTM4MjYsImV4cCI6MjA5ODE2OTgyNn0.5VkR9LsNQ4eG81Im5deV567qEN1iFLVTzAg3S3_6UXs';
 
 // Cliente Supabase simplificado (sin librería externa)
 const sb = {
