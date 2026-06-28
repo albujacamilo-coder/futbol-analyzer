@@ -914,82 +914,113 @@ function renderBracket(){
   const cont=document.getElementById('brcont');
   if(!BD){ cont.innerHTML='<div class="infobox">Actualiza el modelo para ver el bracket.</div>'; return; }
 
-  // Función para renderizar una celda de equipo en el bracket
-  function teamCell(name, isWinner, pChamp){
+  const ko=getKOFx();
+
+  function teamCell(name, winnerOfMatch, pChamp, side){
     const pct=(MCP[name]?.p_champ||pChamp||0).toFixed(1);
+    const isWinner=winnerOfMatch===name;
+    const align=side==='right'?'flex-end':'flex-start';
     return`<div style="
-      background:${isWinner?'#d4edda':'#f9f9f9'};
+      background:${isWinner?'#d4edda':'#f5f5f5'};
       border:1px solid ${isWinner?'#86efac':'#e0e0e0'};
       border-radius:6px;padding:5px 8px;
       display:flex;justify-content:space-between;align-items:center;
-      min-width:120px;max-width:140px;gap:4px">
-      <span style="font-size:11px;font-weight:${isWinner?'600':'400'};color:${isWinner?'#1a5e34':'#333'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">${name}</span>
-      <span style="font-size:9px;color:${isWinner?'#1a5e34':'#aaa'};white-space:nowrap">${pct}%</span>
+      width:130px;gap:4px">
+      <span style="font-size:11px;font-weight:${isWinner?'600':'400'};color:${isWinner?'#1a5e34':'#444'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:85px">${name}</span>
+      <span style="font-size:9px;color:${isWinner?'#1a5e34':'#bbb'};white-space:nowrap;flex-shrink:0">${pct}%</span>
     </div>`;
   }
 
-  // Función para renderizar un partido en el bracket
-  function bracketMatch(m, phase){
-    if(!m||!m.ta) return'<div style="min-width:140px"></div>';
-    const wA=m.winner===m.ta, wB=m.winner===m.tb;
-    const ko=getKOFx();
+  function matchBox(m, side){
+    if(!m||!m.ta) return`<div style="width:130px;height:60px"></div>`;
     const hasResult=ko[m.id]&&ko[m.id][0]!==undefined;
-    const scoreStr=hasResult?`<span style="font-size:10px;font-weight:600;color:#1a5e34">${ko[m.id][0]}-${ko[m.id][1]}</span>`
-      :`<span style="font-size:9px;color:#aaa">${m.xgRStr}</span>`;
-
-    return`<div style="display:flex;flex-direction:column;gap:3px;position:relative">
-      <div style="font-size:9px;color:#aaa;margin-bottom:2px;text-align:center">${m.id}</div>
-      ${teamCell(m.ta, wA, MCP[m.ta]?.p_champ)}
-      <div style="text-align:center;font-size:9px;color:#888;padding:1px 0">${scoreStr}</div>
-      ${teamCell(m.tb, wB, MCP[m.tb]?.p_champ)}
+    // Ganador basado en probabilidad del partido (no % campeón)
+    const winner=hasResult
+      ?(ko[m.id][0]>ko[m.id][1]?m.ta:ko[m.id][1]>ko[m.id][0]?m.tb:m.winner)
+      :m.winner;
+    const scoreStr=hasResult
+      ?`<span style="font-size:10px;font-weight:700;color:#1a5e34">${ko[m.id][0]}-${ko[m.id][1]}</span>`
+      :`<span style="font-size:9px;color:#bbb">${(m.pw_a*100).toFixed(0)}% - ${(m.pw_b*100).toFixed(0)}%</span>`;
+    return`<div style="display:flex;flex-direction:column;align-items:${side==='right'?'flex-end':'flex-start'};gap:2px">
+      <div style="font-size:8px;color:#ccc;text-align:center;width:130px">${m.id}</div>
+      ${teamCell(m.ta, winner, null, side)}
+      <div style="text-align:center;font-size:9px;padding:1px 0;width:130px">${scoreStr}</div>
+      ${teamCell(m.tb, winner, null, side)}
     </div>`;
   }
 
-  // Construir el árbol visual por fases
-  // Estructura: R32 (16) → R16 (8) → QF (4) → SF (2) → Final (1)
-  const phases = [
-    {label:'R32', matches: BD.r32, cols: 2},
-    {label:'Octavos', matches: BD.r16, cols: 2},
-    {label:'Cuartos', matches: BD.qf, cols: 2},
-    {label:'Semis', matches: BD.sf, cols: 2},
-    {label:'Final', matches: [BD.fin], cols: 1},
-  ];
+  // Dividir R32 en dos grupos de 8 — lado izquierdo y derecho
+  const leftR32  = BD.r32.slice(0,8);
+  const rightR32 = BD.r32.slice(8,16);
+  const leftR16  = BD.r16.slice(0,4);
+  const rightR16 = BD.r16.slice(4,8);
+  const leftQF   = BD.qf.slice(0,2);
+  const rightQF  = BD.qf.slice(2,4);
+  const leftSF   = BD.sf.slice(0,1);
+  const rightSF  = BD.sf.slice(1,2);
 
-  // Render en formato horizontal scrollable
-  let html=`<div style="overflow-x:auto;padding-bottom:8px">
-  <div style="display:flex;gap:16px;align-items:flex-start;min-width:900px;padding:8px 4px">`;
+  // Calcular espaciado vertical por fase
+  const gaps={r32:'6px',r16:'52px',qf:'124px',sf:'268px'};
 
-  phases.forEach(({label, matches, cols})=>{
-    const perCol = Math.ceil(matches.length / cols);
-    html+=`<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-      <div style="font-size:10px;font-weight:600;color:#888;text-align:center;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;padding:4px 8px;background:#f5f5f5;border-radius:6px">${label}</div>
-      <div style="display:flex;flex-direction:column;gap:${label==='R32'?'8px':label==='Octavos'?'32px':label==='Cuartos'?'72px':label==='Semis'?'152px':'220px'}">
-        ${matches.map(m=>bracketMatch(m, label)).join('')}
-      </div>
+  function column(matches, side, gap){
+    return`<div style="display:flex;flex-direction:column;gap:${gap}">
+      ${matches.map(m=>matchBox(m,side)).join('')}
     </div>`;
+  }
 
-    // Flecha conectora entre fases (excepto después de la final)
-    if(label!=='Final'){
-      html+=`<div style="display:flex;align-items:center;color:#ccc;font-size:16px;align-self:center;flex-shrink:0">→</div>`;
-    }
-  });
+  function colHeader(label){
+    return`<div style="font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.08em;text-align:center;padding:3px 8px;background:#f0f0f0;border-radius:5px;margin-bottom:6px">${label}</div>`;
+  }
 
-  html+=`</div></div>`;
+  // Final en el centro
+  const finWinner=ko[BD.fin.id]&&ko[BD.fin.id][0]!==undefined
+    ?(ko[BD.fin.id][0]>ko[BD.fin.id][1]?BD.fin.ta:BD.fin.tb)
+    :BD.fin.winner;
+  const finScore=ko[BD.fin.id]&&ko[BD.fin.id][0]!==undefined
+    ?`${ko[BD.fin.id][0]}-${ko[BD.fin.id][1]}`
+    :`${(BD.fin.pw_a*100).toFixed(0)}% - ${(BD.fin.pw_b*100).toFixed(0)}%`;
 
-  // Leyenda
-  html+=`<div style="display:flex;gap:12px;align-items:center;margin-top:8px;padding:8px 12px;background:#f9f9f9;border-radius:8px;flex-wrap:wrap">
+  const finalHtml=`<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding-top:24px">
+    <div style="font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.08em;text-align:center;padding:3px 8px;background:#f0f0f0;border-radius:5px;margin-bottom:6px">🏆 Final</div>
+    <div style="font-size:8px;color:#ccc;text-align:center;width:130px">${BD.fin.id}</div>
+    ${teamCell(BD.fin.ta, finWinner, null, 'left')}
+    <div style="text-align:center;font-size:10px;font-weight:600;padding:2px 0;color:#555">${finScore}</div>
+    ${teamCell(BD.fin.tb, finWinner, null, 'left')}
+    ${finWinner?`<div style="margin-top:8px;padding:6px 12px;background:#1a5e34;color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-align:center">🏆 ${finWinner}</div>`:''}
+  </div>`;
+
+  cont.innerHTML=`
+  <div style="overflow-x:auto;padding:8px 0 16px">
+  <div style="display:flex;align-items:flex-start;gap:10px;min-width:1000px;justify-content:center">
+
+    <!-- LADO IZQUIERDO -->
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <div style="display:flex;flex-direction:column">${colHeader('R32')}${column(leftR32,'left',gaps.r32)}</div>
+      <div style="display:flex;flex-direction:column">${colHeader('Octavos')}${column(leftR16,'left',gaps.r16)}</div>
+      <div style="display:flex;flex-direction:column">${colHeader('Cuartos')}${column(leftQF,'left',gaps.qf)}</div>
+      <div style="display:flex;flex-direction:column">${colHeader('Semis')}${column(leftSF,'left',gaps.sf)}</div>
+    </div>
+
+    <!-- FINAL CENTRO -->
+    <div style="flex-shrink:0">${finalHtml}</div>
+
+    <!-- LADO DERECHO -->
+    <div style="display:flex;gap:10px;align-items:flex-start;flex-direction:row-reverse">
+      <div style="display:flex;flex-direction:column">${colHeader('R32')}${column(rightR32,'right',gaps.r32)}</div>
+      <div style="display:flex;flex-direction:column">${colHeader('Octavos')}${column(rightR16,'right',gaps.r16)}</div>
+      <div style="display:flex;flex-direction:column">${colHeader('Cuartos')}${column(rightQF,'right',gaps.qf)}</div>
+      <div style="display:flex;flex-direction:column">${colHeader('Semis')}${column(rightSF,'right',gaps.sf)}</div>
+    </div>
+
+  </div>
+  </div>
+  <div style="display:flex;gap:12px;align-items:center;padding:8px 12px;background:#f9f9f9;border-radius:8px;flex-wrap:wrap;margin-top:4px">
     <div style="display:flex;align-items:center;gap:5px">
       <div style="width:12px;height:12px;background:#d4edda;border:1px solid #86efac;border-radius:3px"></div>
       <span style="font-size:11px;color:#555">Favorito / avanza</span>
     </div>
-    <div style="display:flex;align-items:center;gap:5px">
-      <div style="width:12px;height:12px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:3px"></div>
-      <span style="font-size:11px;color:#555">Eliminado</span>
-    </div>
-    <span style="font-size:11px;color:#aaa">% = probabilidad de campeón · xG rond. = goles esperados</span>
+    <span style="font-size:11px;color:#aaa">% = probabilidad de ser campeón · porcentajes en partidos pendientes = % de ganar ese partido</span>
   </div>`;
-
-  cont.innerHTML=html;
 }
 
 // ── RENDER PARTIDOS ───────────────────────────────────────────────────────────
