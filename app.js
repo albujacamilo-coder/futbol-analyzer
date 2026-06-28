@@ -915,112 +915,146 @@ function renderBracket(){
   if(!BD){ cont.innerHTML='<div class="infobox">Actualiza el modelo para ver el bracket.</div>'; return; }
 
   const ko=getKOFx();
+  let activePhase='r32';
 
-  function teamCell(name, winnerOfMatch, pChamp, side){
-    const pct=(MCP[name]?.p_champ||pChamp||0).toFixed(1);
-    const isWinner=winnerOfMatch===name;
-    const align=side==='right'?'flex-end':'flex-start';
-    return`<div style="
-      background:${isWinner?'#d4edda':'#f5f5f5'};
-      border:1px solid ${isWinner?'#86efac':'#e0e0e0'};
-      border-radius:6px;padding:5px 8px;
-      display:flex;justify-content:space-between;align-items:center;
-      width:130px;gap:4px">
-      <span style="font-size:11px;font-weight:${isWinner?'600':'400'};color:${isWinner?'#1a5e34':'#444'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:85px">${name}</span>
-      <span style="font-size:9px;color:${isWinner?'#1a5e34':'#bbb'};white-space:nowrap;flex-shrink:0">${pct}%</span>
+  function getWinner(m){
+    if(!m||!m.ta) return null;
+    const r=ko[m.id];
+    if(r&&r[0]!==undefined) return r[0]>r[1]?m.ta:r[1]>r[0]?m.tb:m.winner;
+    return m.winner;
+  }
+
+  function matchCard(m){
+    if(!m||!m.ta) return'';
+    const r=ko[m.id];
+    const hasResult=r&&r[0]!==undefined;
+    const winner=getWinner(m);
+    const wA=winner===m.ta, wB=winner===m.tb;
+    const pA=(m.pw_a*100).toFixed(0), pB=(m.pw_b*100).toFixed(0);
+    const pChampA=(MCP[m.ta]?.p_champ||0).toFixed(1);
+    const pChampB=(MCP[m.tb]?.p_champ||0).toFixed(1);
+
+    return`<div style="background:#fff;border:1px solid #e8e8e8;border-radius:10px;overflow:hidden;margin-bottom:8px">
+      <div style="padding:6px 12px;background:#f9f9f9;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:10px;color:#aaa;font-weight:500">${m.id}</span>
+        <span style="font-size:10px;color:${hasResult?'#1a5e34':'#aaa'};font-weight:${hasResult?'600':'400'}">${hasResult?'✅ Jugado':'⏳ Pendiente'}</span>
+      </div>
+
+      <!-- Equipo A -->
+      <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #f5f5f5;background:${wA?'#f0fdf4':'#fff'}">
+        <div>
+          <div style="font-size:13px;font-weight:${wA?'700':'400'};color:${wA?'#1a5e34':'#333'}">${m.ta}</div>
+          <div style="font-size:10px;color:#aaa;margin-top:1px">${pChampA}% campeón</div>
+        </div>
+        <div style="font-size:11px;color:#888;text-align:right">${hasResult?'':pA+'% ganar'}</div>
+        <div style="font-size:18px;font-weight:700;color:${wA?'#1a5e34':'#ccc'};min-width:20px;text-align:center">${hasResult?r[0]:'—'}</div>
+      </div>
+
+      <!-- Equipo B -->
+      <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:10px 12px;background:${wB?'#f0fdf4':'#fff'}">
+        <div>
+          <div style="font-size:13px;font-weight:${wB?'700':'400'};color:${wB?'#1a5e34':'#333'}">${m.tb}</div>
+          <div style="font-size:10px;color:#aaa;margin-top:1px">${pChampB}% campeón</div>
+        </div>
+        <div style="font-size:11px;color:#888;text-align:right">${hasResult?'':pB+'% ganar'}</div>
+        <div style="font-size:18px;font-weight:700;color:${wB?'#1a5e34':'#ccc'};min-width:20px;text-align:center">${hasResult?r[1]:'—'}</div>
+      </div>
     </div>`;
   }
 
-  function matchBox(m, side){
-    if(!m||!m.ta) return`<div style="width:130px;height:60px"></div>`;
-    const hasResult=ko[m.id]&&ko[m.id][0]!==undefined;
-    // Ganador basado en probabilidad del partido (no % campeón)
-    const winner=hasResult
-      ?(ko[m.id][0]>ko[m.id][1]?m.ta:ko[m.id][1]>ko[m.id][0]?m.tb:m.winner)
-      :m.winner;
-    const scoreStr=hasResult
-      ?`<span style="font-size:10px;font-weight:700;color:#1a5e34">${ko[m.id][0]}-${ko[m.id][1]}</span>`
-      :`<span style="font-size:9px;color:#bbb">${(m.pw_a*100).toFixed(0)}% - ${(m.pw_b*100).toFixed(0)}%</span>`;
-    return`<div style="display:flex;flex-direction:column;align-items:${side==='right'?'flex-end':'flex-start'};gap:2px">
-      <div style="font-size:8px;color:#ccc;text-align:center;width:130px">${m.id}</div>
-      ${teamCell(m.ta, winner, null, side)}
-      <div style="text-align:center;font-size:9px;padding:1px 0;width:130px">${scoreStr}</div>
-      ${teamCell(m.tb, winner, null, side)}
-    </div>`;
+  const phases=[
+    {id:'r32', label:'R32', matches:BD.r32, date:'28 jun – 3 jul'},
+    {id:'r16', label:'Octavos', matches:BD.r16, date:'4 – 7 jul'},
+    {id:'qf',  label:'Cuartos', matches:BD.qf,  date:'9 – 11 jul'},
+    {id:'sf',  label:'Semis',   matches:BD.sf,   date:'14 – 15 jul'},
+    {id:'fin', label:'🏆 Final', matches:[BD.fin], date:'19 jul'},
+  ];
+
+  function renderPhase(phaseId){
+    const phase=phases.find(p=>p.id===phaseId);
+    if(!phase) return;
+
+    // Actualizar tabs
+    phases.forEach(p=>{
+      const btn=document.getElementById('br-tab-'+p.id);
+      if(!btn) return;
+      const active=p.id===phaseId;
+      btn.style.borderBottom=active?'2px solid #111':'2px solid transparent';
+      btn.style.color=active?'#111':'#888';
+      btn.style.fontWeight=active?'600':'400';
+      btn.style.background=active?'#fff':'transparent';
+    });
+
+    // Render partidos
+    const grid=document.getElementById('br-grid');
+    if(!grid) return;
+
+    // Final especial
+    if(phaseId==='fin'){
+      const m=BD.fin;
+      const r=ko[m.id];
+      const hasResult=r&&r[0]!==undefined;
+      const winner=getWinner(m);
+      grid.innerHTML=`
+        <div style="max-width:400px;margin:0 auto">
+          <div style="text-align:center;padding:16px 0 8px;font-size:12px;color:#888">19 jul · MetLife Stadium · Nueva Jersey</div>
+          ${matchCard(m)}
+          ${winner?`<div style="text-align:center;margin-top:12px">
+            <div style="display:inline-flex;align-items:center;gap:8px;background:#1a5e34;color:#fff;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:700">
+              🏆 Campeón: ${winner}
+            </div>
+            <div style="font-size:11px;color:#aaa;margin-top:6px">${(MCP[winner]?.p_champ||0).toFixed(1)}% de probabilidad según el modelo</div>
+          </div>`:''}
+        </div>`;
+      return;
+    }
+
+    const cols = phaseId==='r32' ? 2 : phaseId==='r16' ? 2 : 1;
+    const matches=phase.matches;
+
+    if(cols===2){
+      const half=Math.ceil(matches.length/2);
+      const left=matches.slice(0,half);
+      const right=matches.slice(half);
+      grid.innerHTML=`
+        <div style="font-size:11px;color:#888;margin-bottom:8px;text-align:center">${phase.date} · ${matches.length} partidos</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>${left.map(matchCard).join('')}</div>
+          <div>${right.map(matchCard).join('')}</div>
+        </div>`;
+    } else {
+      grid.innerHTML=`
+        <div style="font-size:11px;color:#888;margin-bottom:8px;text-align:center">${phase.date} · ${matches.length} partidos</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          ${matches.map(matchCard).join('')}
+        </div>`;
+    }
   }
 
-  // Dividir R32 en dos grupos de 8 — lado izquierdo y derecho
-  const leftR32  = BD.r32.slice(0,8);
-  const rightR32 = BD.r32.slice(8,16);
-  const leftR16  = BD.r16.slice(0,4);
-  const rightR16 = BD.r16.slice(4,8);
-  const leftQF   = BD.qf.slice(0,2);
-  const rightQF  = BD.qf.slice(2,4);
-  const leftSF   = BD.sf.slice(0,1);
-  const rightSF  = BD.sf.slice(1,2);
-
-  // Calcular espaciado vertical por fase
-  const gaps={r32:'6px',r16:'52px',qf:'124px',sf:'268px'};
-
-  function column(matches, side, gap){
-    return`<div style="display:flex;flex-direction:column;gap:${gap}">
-      ${matches.map(m=>matchBox(m,side)).join('')}
-    </div>`;
-  }
-
-  function colHeader(label){
-    return`<div style="font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.08em;text-align:center;padding:3px 8px;background:#f0f0f0;border-radius:5px;margin-bottom:6px">${label}</div>`;
-  }
-
-  // Final en el centro
-  const finWinner=ko[BD.fin.id]&&ko[BD.fin.id][0]!==undefined
-    ?(ko[BD.fin.id][0]>ko[BD.fin.id][1]?BD.fin.ta:BD.fin.tb)
-    :BD.fin.winner;
-  const finScore=ko[BD.fin.id]&&ko[BD.fin.id][0]!==undefined
-    ?`${ko[BD.fin.id][0]}-${ko[BD.fin.id][1]}`
-    :`${(BD.fin.pw_a*100).toFixed(0)}% - ${(BD.fin.pw_b*100).toFixed(0)}%`;
-
-  const finalHtml=`<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding-top:24px">
-    <div style="font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.08em;text-align:center;padding:3px 8px;background:#f0f0f0;border-radius:5px;margin-bottom:6px">🏆 Final</div>
-    <div style="font-size:8px;color:#ccc;text-align:center;width:130px">${BD.fin.id}</div>
-    ${teamCell(BD.fin.ta, finWinner, null, 'left')}
-    <div style="text-align:center;font-size:10px;font-weight:600;padding:2px 0;color:#555">${finScore}</div>
-    ${teamCell(BD.fin.tb, finWinner, null, 'left')}
-    ${finWinner?`<div style="margin-top:8px;padding:6px 12px;background:#1a5e34;color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-align:center">🏆 ${finWinner}</div>`:''}
-  </div>`;
-
-  cont.innerHTML=`
-  <div style="overflow-x:auto;padding:8px 0 16px">
-  <div style="display:flex;align-items:flex-start;gap:10px;min-width:1000px;justify-content:center">
-
-    <!-- LADO IZQUIERDO -->
-    <div style="display:flex;gap:10px;align-items:flex-start">
-      <div style="display:flex;flex-direction:column">${colHeader('R32')}${column(leftR32,'left',gaps.r32)}</div>
-      <div style="display:flex;flex-direction:column">${colHeader('Octavos')}${column(leftR16,'left',gaps.r16)}</div>
-      <div style="display:flex;flex-direction:column">${colHeader('Cuartos')}${column(leftQF,'left',gaps.qf)}</div>
-      <div style="display:flex;flex-direction:column">${colHeader('Semis')}${column(leftSF,'left',gaps.sf)}</div>
-    </div>
-
-    <!-- FINAL CENTRO -->
-    <div style="flex-shrink:0">${finalHtml}</div>
-
-    <!-- LADO DERECHO -->
-    <div style="display:flex;gap:10px;align-items:flex-start;flex-direction:row-reverse">
-      <div style="display:flex;flex-direction:column">${colHeader('R32')}${column(rightR32,'right',gaps.r32)}</div>
-      <div style="display:flex;flex-direction:column">${colHeader('Octavos')}${column(rightR16,'right',gaps.r16)}</div>
-      <div style="display:flex;flex-direction:column">${colHeader('Cuartos')}${column(rightQF,'right',gaps.qf)}</div>
-      <div style="display:flex;flex-direction:column">${colHeader('Semis')}${column(rightSF,'right',gaps.sf)}</div>
-    </div>
-
+  // Tabs
+  const tabsHtml=`<div style="display:flex;border-bottom:1px solid #e0e0e0;background:#fafafa;margin-bottom:12px;overflow-x:auto">
+    ${phases.map(p=>`<button id="br-tab-${p.id}" onclick="window._brPhase('${p.id}')"
+      style="flex:1;padding:10px 8px;font-size:12px;font-weight:400;border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit;white-space:nowrap;min-width:60px">
+      ${p.label}
+    </button>`).join('')}
   </div>
-  </div>
-  <div style="display:flex;gap:12px;align-items:center;padding:8px 12px;background:#f9f9f9;border-radius:8px;flex-wrap:wrap;margin-top:4px">
-    <div style="display:flex;align-items:center;gap:5px">
-      <div style="width:12px;height:12px;background:#d4edda;border:1px solid #86efac;border-radius:3px"></div>
-      <span style="font-size:11px;color:#555">Favorito / avanza</span>
-    </div>
-    <span style="font-size:11px;color:#aaa">% = probabilidad de ser campeón · porcentajes en partidos pendientes = % de ganar ese partido</span>
-  </div>`;
+  <div id="br-grid"></div>`;
+
+  cont.innerHTML=tabsHtml;
+
+  // Función global para cambiar fase
+  window._brPhase=function(id){
+    activePhase=id;
+    renderPhase(id);
+  };
+
+  // Mostrar R32 por defecto o la fase más avanzada con partidos
+  const hasR16=BD.r16.some(m=>ko[m.id]);
+  const hasQF=BD.qf.some(m=>ko[m.id]);
+  const hasSF=BD.sf.some(m=>ko[m.id]);
+  const hasFin=ko[BD.fin.id];
+  const defaultPhase=hasFin?'fin':hasSF?'sf':hasQF?'qf':hasR16?'r16':'r32';
+  renderPhase(defaultPhase);
 }
 
 // ── RENDER PARTIDOS ───────────────────────────────────────────────────────────
