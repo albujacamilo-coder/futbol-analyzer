@@ -570,12 +570,36 @@ const MATCH_DATES = {
   "Colombia|Portugal":"2026-06-27","DR Congo|Uzbekistán":"2026-06-27",
   "Inglaterra|Croacia":"2026-06-17","Ghana|Panamá":"2026-06-17",
   "Inglaterra|Ghana":"2026-06-23","Panamá|Croacia":"2026-06-23",
-  "Panamá|Inglaterra":"2026-06-27","Croacia|Ghana":"2026-06-27"
+  // ── Ronda de 32 (M73-M88) ──
+  "M73":"2026-06-28","M74":"2026-06-28","M75":"2026-06-28",
+  "M76":"2026-06-29","M77":"2026-06-29","M78":"2026-06-29",
+  "M79":"2026-06-30","M80":"2026-06-30","M81":"2026-06-30",
+  "M82":"2026-07-01","M83":"2026-07-01","M84":"2026-07-01",
+  "M85":"2026-07-02","M86":"2026-07-02","M87":"2026-07-02",
+  "M88":"2026-07-03",
+  // ── Octavos (M89-M96) ──
+  "M89":"2026-07-04","M90":"2026-07-04",
+  "M91":"2026-07-05","M92":"2026-07-05",
+  "M93":"2026-07-06","M94":"2026-07-06",
+  "M95":"2026-07-07","M96":"2026-07-07",
+  // ── Cuartos (M97-M100) ──
+  "M97":"2026-07-09","M98":"2026-07-09",
+  "M99":"2026-07-10","M100":"2026-07-10",
+  // ── Semis (M101-M102) ──
+  "M101":"2026-07-14","M102":"2026-07-15",
+  // ── Final (M104) ──
+  "M104":"2026-07-19"
 };
 
 function getMatchDate(ta,tb){ return MATCH_DATES[ta+'|'+tb]||MATCH_DATES[tb+'|'+ta]||null; }
+function getMatchDateById(id){ return MATCH_DATES[id]||null; }
 function isMatchPast(ta,tb){
   const d=getMatchDate(ta,tb); if(!d) return false;
+  const today=new Date(); today.setHours(0,0,0,0);
+  return new Date(d+'T00:00:00')<today;
+}
+function isMatchPastById(id){
+  const d=getMatchDateById(id); if(!d) return false;
   const today=new Date(); today.setHours(0,0,0,0);
   return new Date(d+'T00:00:00')<today;
 }
@@ -808,9 +832,23 @@ function buildPD(u,fx){
     }
   }
   if(BD){
+    const kofx=getKOFx();
     const rnds=[{k:'r32',l:'Ronda de 32'},{k:'r16',l:'Octavos de final'},{k:'qf',l:'Cuartos de final'},{k:'sf',l:'Semifinales'}];
-    rnds.forEach(({k,l})=>{ (BD[k]||[]).forEach(m=>{ const a=matchAnal(m.ta,m.tb,u); data.push({round:k,rl:l,ta:m.ta,tb:m.tb,...a,played:false,real:null}); }); });
-    if(BD.fin){ const m=BD.fin; const a=matchAnal(m.ta,m.tb,u); data.push({round:'final',rl:'Gran Final · 19 jul',ta:m.ta,tb:m.tb,...a,played:false,real:null}); }
+    rnds.forEach(({k,l})=>{
+      (BD[k]||[]).forEach(m=>{
+        const a=matchAnal(m.ta,m.tb,u);
+        const real=kofx[m.id];
+        const played=!!real;
+        data.push({round:k,rl:l,ta:m.ta,tb:m.tb,...a,played,real:played?[real[0],real[1]]:null,matchId:m.id});
+      });
+    });
+    if(BD.fin){
+      const m=BD.fin;
+      const a=matchAnal(m.ta,m.tb,u);
+      const real=kofx[m.id];
+      const played=!!real;
+      data.push({round:'final',rl:'Gran Final · 19 jul',ta:m.ta,tb:m.tb,...a,played,real:played?[real[0],real[1]]:null,matchId:m.id});
+    }
   }
   return data;
 }
@@ -3279,12 +3317,25 @@ async function syncResults(){
 // Helper para contar partidos pasados sin resultado
 function countNeedManual(){
   const fx=getFx();
-  const allMatches=Object.values(GRP).flatMap(ms=>{
-    const pairs=[]; 
-    for(let i=0;i<ms.length;i++) for(let j=i+1;j<ms.length;j++) pairs.push([ms[i],ms[j]]); 
+  const kofx=getKOFx();
+  // Partidos de grupos pendientes
+  const groupMatches=Object.values(GRP).flatMap(ms=>{
+    const pairs=[];
+    for(let i=0;i<ms.length;i++) for(let j=i+1;j<ms.length;j++) pairs.push([ms[i],ms[j]]);
     return pairs;
   });
-  return allMatches.filter(([ta,tb])=>isMatchPast(ta,tb)&&!getResult(fx,ta,tb)).length;
+  const needGroup=groupMatches.filter(([ta,tb])=>isMatchPast(ta,tb)&&!getResult(fx,ta,tb)).length;
+
+  // Partidos KO pendientes
+  let needKO=0;
+  if(BD){
+    const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.fin?[BD.fin]:[])];
+    allKO.forEach(m=>{
+      if(!m||!m.ta||!m.tb) return;
+      if(isMatchPastById(m.id)&&!kofx[m.id]) needKO++;
+    });
+  }
+  return needGroup+needKO;
 }
 
 function showApiStatus(msg,type,persistent=false){
