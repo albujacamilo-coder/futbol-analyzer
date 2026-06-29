@@ -570,19 +570,23 @@ const MATCH_DATES = {
   "Colombia|Portugal":"2026-06-27","DR Congo|Uzbekistán":"2026-06-27",
   "Inglaterra|Croacia":"2026-06-17","Ghana|Panamá":"2026-06-17",
   "Inglaterra|Ghana":"2026-06-23","Panamá|Croacia":"2026-06-23",
-  // ── Ronda de 32 (M73-M88) ──
-  // 28 jun: M73 (Sudáfrica vs Canadá - ya jugado)
-  "M73":"2026-06-28",
-  // 29 jun: M74, M75, M76 (hoy - Brasil vs Japón, Alemania vs Paraguay, Países Bajos vs Marruecos)
-  "M74":"2026-06-29","M75":"2026-06-29","M76":"2026-06-29",
-  // 30 jun: M77, M78, M79
-  "M77":"2026-06-30","M78":"2026-06-30","M79":"2026-06-30",
-  // 1 jul: M80, M81, M82
-  "M80":"2026-07-01","M81":"2026-07-01","M82":"2026-07-01",
-  // 2 jul: M83, M84, M85
-  "M83":"2026-07-02","M84":"2026-07-02","M85":"2026-07-02",
-  // 3 jul: M86, M87, M88
-  "M86":"2026-07-03","M87":"2026-07-03","M88":"2026-07-03",
+  // ── Ronda de 32 — Calendario oficial FIFA 2026 ──
+  "M73":"2026-06-28",  // Sudáfrica vs Canadá ✅
+  "M74":"2026-06-29",  // Brasil vs Japón
+  "M75":"2026-06-29",  // Alemania vs Paraguay
+  "M76":"2026-06-29",  // Países Bajos vs Marruecos
+  "M77":"2026-06-30",  // Costa de Marfil vs Noruega
+  "M78":"2026-06-30",  // Francia vs Suecia
+  "M79":"2026-06-30",  // México vs Ecuador
+  "M80":"2026-07-01",  // Inglaterra vs DR Congo
+  "M81":"2026-07-01",  // Bélgica vs Senegal
+  "M82":"2026-07-01",  // EE.UU. vs Bosnia
+  "M83":"2026-07-02",  // Portugal vs Croacia
+  "M84":"2026-07-02",  // España vs Austria
+  "M85":"2026-07-02",  // Suiza vs Argelia
+  "M86":"2026-07-03",  // Argentina vs Cabo Verde
+  "M87":"2026-07-03",  // Colombia vs Ghana
+  "M88":"2026-07-03",  // Australia vs Egipto
   // ── Octavos (M89-M96) ──
   "M89":"2026-07-04","M90":"2026-07-04",
   "M91":"2026-07-05","M92":"2026-07-05",
