@@ -571,12 +571,18 @@ const MATCH_DATES = {
   "Inglaterra|Croacia":"2026-06-17","Ghana|Panamá":"2026-06-17",
   "Inglaterra|Ghana":"2026-06-23","Panamá|Croacia":"2026-06-23",
   // ── Ronda de 32 (M73-M88) ──
-  "M73":"2026-06-28","M74":"2026-06-28","M75":"2026-06-28",
-  "M76":"2026-06-29","M77":"2026-06-29","M78":"2026-06-29",
-  "M79":"2026-06-30","M80":"2026-06-30","M81":"2026-06-30",
-  "M82":"2026-07-01","M83":"2026-07-01","M84":"2026-07-01",
-  "M85":"2026-07-02","M86":"2026-07-02","M87":"2026-07-02",
-  "M88":"2026-07-03",
+  // 28 jun: M73 (Sudáfrica vs Canadá - ya jugado)
+  "M73":"2026-06-28",
+  // 29 jun: M74, M75, M76 (hoy - Brasil vs Japón, Alemania vs Paraguay, Países Bajos vs Marruecos)
+  "M74":"2026-06-29","M75":"2026-06-29","M76":"2026-06-29",
+  // 30 jun: M77, M78, M79
+  "M77":"2026-06-30","M78":"2026-06-30","M79":"2026-06-30",
+  // 1 jul: M80, M81, M82
+  "M80":"2026-07-01","M81":"2026-07-01","M82":"2026-07-01",
+  // 2 jul: M83, M84, M85
+  "M83":"2026-07-02","M84":"2026-07-02","M85":"2026-07-02",
+  // 3 jul: M86, M87, M88
+  "M86":"2026-07-03","M87":"2026-07-03","M88":"2026-07-03",
   // ── Octavos (M89-M96) ──
   "M89":"2026-07-04","M90":"2026-07-04",
   "M91":"2026-07-05","M92":"2026-07-05",
@@ -595,13 +601,13 @@ function getMatchDate(ta,tb){ return MATCH_DATES[ta+'|'+tb]||MATCH_DATES[tb+'|'+
 function getMatchDateById(id){ return MATCH_DATES[id]||null; }
 function isMatchPast(ta,tb){
   const d=getMatchDate(ta,tb); if(!d) return false;
-  const today=new Date(); today.setHours(0,0,0,0);
-  return new Date(d+'T00:00:00')<today;
+  const today=new Date(); today.setHours(23,59,59,0);
+  return new Date(d+'T00:00:00')<=today;
 }
 function isMatchPastById(id){
   const d=getMatchDateById(id); if(!d) return false;
-  const today=new Date(); today.setHours(0,0,0,0);
-  return new Date(d+'T00:00:00')<today;
+  const today=new Date(); today.setHours(23,59,59,0);
+  return new Date(d+'T00:00:00')<=today;
 }
 function isSuspiciousScore(ga,gb){
   if(ga<0||gb<0) return '❌ Marcador negativo';
