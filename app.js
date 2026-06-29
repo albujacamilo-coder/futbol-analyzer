@@ -89,10 +89,11 @@ function showPremiumModal(){
       </button>
       <div style="text-align:center;padding:10px;background:#f0fdf4;border-radius:8px;border:1px solid #86efac">
         <div style="font-size:12px;color:#1a5e34;font-weight:600;margin-bottom:4px">¿Aún no tienes acceso?</div>
-        <div style="font-size:11px;color:#555;margin-bottom:8px">Mundial Pack · Acceso completo hasta julio 2026</div>
-        <button onclick="alert('¡Próximamente! Link de compra disponible muy pronto.')" style="padding:8px 16px;background:#4caf50;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600">
+        <div style="font-size:11px;color:#555;margin-bottom:8px">Mundial Pack · Acceso completo hasta julio 2026 · $9.99</div>
+        <a href="https://go.hotmart.com/P106533865R" target="_blank"
+          style="display:inline-block;padding:10px 20px;background:#4caf50;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">
           ⚡ Obtener acceso premium →
-        </button>
+        </a>
       </div>
     </div>
   </div>`;
