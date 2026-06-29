@@ -3019,9 +3019,11 @@ function renderKnockoutInputs(){
       const res=KO_RR[mid];
       const pl=res&&res[0]!==undefined&&res[1]!==undefined;
       const suspicious=pl?isSuspiciousScore(res[0],res[1]):null;
-      const rowClass=suspicious?' suspicious':(pl?' played':(!isActive?' ko-pending':''));
-      const warningTag=suspicious?`<span class="score-warning" title="${suspicious}">⚠️</span>`:'';
-      html+=`<div class="mrow${rowClass}" id="ko-mr-${mid}">
+      const isPast=isMatchPastById(mid);
+      const needsResult=isPast&&!pl&&!ta.startsWith('?');
+      const rowClass=suspicious?' suspicious':(pl?' played':(needsResult?' needs-result':(!isActive?' ko-pending':'')));
+      const warningTag=suspicious?`<span class="score-warning" title="${suspicious}">⚠️</span>`:(needsResult?'<button class="ingresar-btn" style="font-size:9px;background:#f5c518;border:none;border-radius:3px;padding:1px 5px;cursor:pointer;font-family:inherit;color:#856404;font-weight:600">⚠️ Ingresar</button>':'');
+      html+=`<div class="mrow${rowClass}" id="ko-mr-${mid}" style="${needsResult?'background:#fff9e6;border-color:#f5c518;border-width:1.5px;':''}">
         <span class="ta${pl&&res[0]>res[1]?' wt':''}" style="font-size:11px">${ta}</span>
         <input class="sinp" type="number" min="0" max="20" value="${pl?res[0]:''}" placeholder="-" ${!isActive?'disabled title="Aún no empieza esta ronda"':''} onchange="setKO('${mid}',0,this.value)">
         <span class="sep">:</span>
@@ -3326,12 +3328,14 @@ function countNeedManual(){
   });
   const needGroup=groupMatches.filter(([ta,tb])=>isMatchPast(ta,tb)&&!getResult(fx,ta,tb)).length;
 
-  // Partidos KO pendientes
+  // Partidos KO pendientes — solo si tienen equipos reales asignados
   let needKO=0;
   if(BD){
     const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.fin?[BD.fin]:[])];
     allKO.forEach(m=>{
       if(!m||!m.ta||!m.tb) return;
+      // Solo contar si los equipos son reales (no placeholders)
+      if(m.ta.startsWith('G')||m.tb.startsWith('G')) return;
       if(isMatchPastById(m.id)&&!kofx[m.id]) needKO++;
     });
   }
