@@ -824,29 +824,39 @@ function calcGS(u,fx){ const gs={}; for(const[g,ms] of Object.entries(GRP)) gs[g
 function calcBD(u){
   const gr=GS; const{asgn,all}=assignThirds(gr);
   const pos=(g,r)=>gr[g][r],g3=mid=>({name:asgn[mid]||all[0]||''});
-  function det(ta,tb){ const a=matchAnal(ta,tb,u); return{ta,tb,...a}; }
+  const kofx=getKOFx();
+  function det(ta,tb,mid){
+    const a=matchAnal(ta,tb,u);
+    // Si el partido ya tiene resultado real, usar el ganador real (considerando penales)
+    if(mid&&kofx[mid]){
+      const r=kofx[mid];
+      const realWinner=getKOWinner(mid,ta,tb,r[0],r[1]);
+      if(realWinner) a.winner=realWinner;
+    }
+    return{ta,tb,...a};
+  }
   const p=pos,g=g3;
   // R32 oficial FIFA 2026 — emparejamientos reales confirmados
   const r32=[
-    {id:"M73",...det(p("A",1).name,p("B",1).name)},        // Sudáfrica (A2) vs Canadá (B2)
-    {id:"M74",...det(p("E",0).name,g("M74").name)},          // Alemania (E1) vs Paraguay (3°D)
-    {id:"M75",...det(p("F",0).name,p("C",1).name)},          // Países Bajos (F1) vs Marruecos (C2)
-    {id:"M76",...det(p("C",0).name,p("F",1).name)},          // Brasil (C1) vs Japón (F2)
-    {id:"M77",...det(p("E",1).name,p("I",1).name)},          // Costa de Marfil (E2) vs Noruega (I2)
-    {id:"M78",...det(p("I",0).name,g("M78").name)},          // Francia (I1) vs Suecia (3°F)
-    {id:"M79",...det(p("A",0).name,g("M79").name)},          // México (A1) vs Ecuador (3°E)
-    {id:"M80",...det(p("L",0).name,g("M80").name)},          // Inglaterra (L1) vs DR Congo (3°K)
-    {id:"M81",...det(p("G",0).name,g("M81").name)},          // Bélgica (G1) vs Senegal (3°I)
-    {id:"M82",...det(p("D",0).name,g("M82").name)},          // EE.UU. (D1) vs Bosnia (3°B)
-    {id:"M83",...det(p("H",0).name,p("J",1).name)},          // España (H1) vs Austria (J2)
-    {id:"M84",...det(p("B",0).name,g("M84").name)},          // Suiza (B1) vs Argelia (3°J)
-    {id:"M85",...det(p("K",1).name,p("L",1).name)},          // Portugal (K2) vs Croacia (L2)
-    {id:"M86",...det(p("J",0).name,p("H",1).name)},          // Argentina (J1) vs Cabo Verde (H2)
-    {id:"M87",...det(p("K",0).name,g("M87").name)},          // Colombia (K1) vs Ghana (3°L)
-    {id:"M88",...det(p("D",1).name,p("G",1).name)},          // Australia (D2) vs Egipto (G2)
+    {id:"M73",...det(p("A",1).name,p("B",1).name,"M73")},        // Sudáfrica (A2) vs Canadá (B2)
+    {id:"M74",...det(p("E",0).name,g("M74").name,"M74")},          // Alemania (E1) vs Paraguay (3°D)
+    {id:"M75",...det(p("F",0).name,p("C",1).name,"M75")},          // Países Bajos (F1) vs Marruecos (C2)
+    {id:"M76",...det(p("C",0).name,p("F",1).name,"M76")},          // Brasil (C1) vs Japón (F2)
+    {id:"M77",...det(p("E",1).name,p("I",1).name,"M77")},          // Costa de Marfil (E2) vs Noruega (I2)
+    {id:"M78",...det(p("I",0).name,g("M78").name,"M78")},          // Francia (I1) vs Suecia (3°F)
+    {id:"M79",...det(p("A",0).name,g("M79").name,"M79")},          // México (A1) vs Ecuador (3°E)
+    {id:"M80",...det(p("L",0).name,g("M80").name,"M80")},          // Inglaterra (L1) vs DR Congo (3°K)
+    {id:"M81",...det(p("G",0).name,g("M81").name,"M81")},          // Bélgica (G1) vs Senegal (3°I)
+    {id:"M82",...det(p("D",0).name,g("M82").name,"M82")},          // EE.UU. (D1) vs Bosnia (3°B)
+    {id:"M83",...det(p("H",0).name,p("J",1).name,"M83")},          // España (H1) vs Austria (J2)
+    {id:"M84",...det(p("B",0).name,g("M84").name,"M84")},          // Suiza (B1) vs Argelia (3°J)
+    {id:"M85",...det(p("K",1).name,p("L",1).name,"M85")},          // Portugal (K2) vs Croacia (L2)
+    {id:"M86",...det(p("J",0).name,p("H",1).name,"M86")},          // Argentina (J1) vs Cabo Verde (H2)
+    {id:"M87",...det(p("K",0).name,g("M87").name,"M87")},          // Colombia (K1) vs Ghana (3°L)
+    {id:"M88",...det(p("D",1).name,p("G",1).name,"M88")},          // Australia (D2) vs Egipto (G2)
   ];
   const w32=r32.map(m=>m.winner);
-  function mk(pairs,ids){ return pairs.map(([a,b],i)=>({id:ids[i],...det(a,b)})); }
+  function mk(pairs,ids){ return pairs.map(([a,b],i)=>({id:ids[i],...det(a,b,ids[i])})); }
   const r16=mk([[w32[1],w32[4]],[w32[0],w32[2]],[w32[3],w32[5]],[w32[6],w32[7]],[w32[10],w32[11]],[w32[8],w32[9]],[w32[13],w32[15]],[w32[12],w32[14]]],["M89","M90","M91","M92","M93","M94","M95","M96"]);
   const w16=r16.map(m=>m.winner);
   const qf=mk([[w16[0],w16[1]],[w16[4],w16[5]],[w16[2],w16[3]],[w16[6],w16[7]]],["M97","M98","M99","M100"]);
@@ -995,7 +1005,10 @@ function renderBracket(){
   function getWinner(m){
     if(!m||!m.ta) return null;
     const r=ko[m.id];
-    if(r&&r[0]!==undefined) return r[0]>r[1]?m.ta:r[1]>r[0]?m.tb:m.winner;
+    if(r&&r[0]!==undefined){
+      const realW=getKOWinner(m.id,m.ta,m.tb,r[0],r[1]);
+      return realW||m.winner;
+    }
     return m.winner;
   }
 
@@ -3033,6 +3046,33 @@ function setKO(matchId,idx,val){
   if(KO_RR[matchId][0]!==undefined&&KO_RR[matchId][1]!==undefined){
     saveToSupabase(matchId, KO_RR[matchId][0], KO_RR[matchId][1], 'ko');
   }
+  // Re-renderizar para mostrar/ocultar el selector de penales si es empate
+  const koSection=document.getElementById('ko-section');
+  if(koSection) koSection.innerHTML=renderKnockoutInputs();
+}
+
+// Ganador en penales — se guarda separado para no afectar el marcador real
+let KO_PEN={};
+function setKOPenalty(matchId,winnerTeam){
+  KO_PEN[matchId]=winnerTeam;
+  try{
+    localStorage.setItem('wc2026_penalties', JSON.stringify(KO_PEN));
+  }catch(e){}
+  saveToSupabase('PEN_'+matchId, winnerTeam==='A'?1:0, winnerTeam==='B'?1:0, 'penal');
+}
+function loadPenalties(){
+  try{
+    const raw=localStorage.getItem('wc2026_penalties');
+    if(raw) KO_PEN=JSON.parse(raw);
+  }catch(e){}
+}
+function getKOWinner(matchId,ta,tb,ga,gb){
+  if(ga>gb) return ta;
+  if(gb>ga) return tb;
+  // Empate — usar definición de penales si existe
+  if(KO_PEN[matchId]==='A') return ta;
+  if(KO_PEN[matchId]==='B') return tb;
+  return null; // empate sin definir penales aún
 }
 function getKOFx(){ const fx={}; for(const[k,r] of Object.entries(KO_RR)) if(r&&r[0]!==undefined&&r[1]!==undefined) fx[k]=r; return fx; }
 
@@ -3057,8 +3097,18 @@ function renderKnockoutInputs(){
       const suspicious=pl?isSuspiciousScore(res[0],res[1]):null;
       const isPast=isMatchPastById(mid);
       const needsResult=isPast&&!pl&&!ta.startsWith('?');
+      const isDraw=pl&&res[0]===res[1];
+      const needsPenalty=isDraw&&!KO_PEN[mid];
       const rowClass=suspicious?' suspicious':(pl?' played':(needsResult?' needs-result':(!isActive?' ko-pending':'')));
       const warningTag=suspicious?`<span class="score-warning" title="${suspicious}">⚠️</span>`:(needsResult?'<button class="ingresar-btn" style="font-size:9px;background:#f5c518;border:none;border-radius:3px;padding:1px 5px;cursor:pointer;font-family:inherit;color:#856404;font-weight:600">⚠️ Ingresar</button>':'');
+      const penaltySelector=isDraw?`<div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;padding:6px;background:${needsPenalty?'#fff3cd':'#f0fdf4'};border-radius:6px">
+        <span style="font-size:10px;color:${needsPenalty?'#856404':'#1a5e34'};font-weight:600">${needsPenalty?'⚠️ Empate — ¿quién avanzó en penales?':'✅ Avanzó en penales:'}</span>
+        <select onchange="setKOPenalty('${mid}',this.value)" style="font-size:11px;padding:3px 6px;border-radius:4px;border:1px solid #ccc;font-family:inherit">
+          <option value="">Seleccionar...</option>
+          <option value="A" ${KO_PEN[mid]==='A'?'selected':''}>${ta}</option>
+          <option value="B" ${KO_PEN[mid]==='B'?'selected':''}>${tb}</option>
+        </select>
+      </div>`:'';
       html+=`<div class="mrow${rowClass}" id="ko-mr-${mid}" style="${needsResult?'background:#fff9e6;border-color:#f5c518;border-width:1.5px;':''}">
         <span class="ta${pl&&res[0]>res[1]?' wt':''}" style="font-size:11px">${ta}</span>
         <input class="sinp" type="number" min="0" max="20" value="${pl?res[0]:''}" placeholder="-" ${!isActive?'disabled title="Aún no empieza esta ronda"':''} onchange="setKO('${mid}',0,this.value)">
@@ -3067,6 +3117,7 @@ function renderKnockoutInputs(){
         <span class="tb${pl&&res[1]>res[0]?' wt':''}" style="font-size:11px">${tb}</span>
         ${warningTag}
         <span style="font-size:9px;color:#999;grid-column:1/-1;text-align:center;margin-top:-2px">${mid}</span>
+        ${penaltySelector}
       </div>`;
     });
     html+='</div>';
@@ -3493,6 +3544,7 @@ function initApp(){
     };
   });
   const hadSaved=loadFromStorage();
+  loadPenalties();
   let loadedCloud=false;
   PD=buildPD(STR,_fx);
   buildMatchList();
