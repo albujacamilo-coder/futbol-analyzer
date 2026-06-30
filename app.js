@@ -78,23 +78,41 @@ function showPremiumModal(){
         </div>`).join('')}
       </div>
 
+      <!-- Proceso claro: comprar → esperar código → activar -->
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:#1a5e34;margin-bottom:10px">¿Cómo obtener acceso?</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <span style="background:#1a5e34;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">1</span>
+            <span style="font-size:12px;color:#333">Compra el acceso — pago único $9.99, válido hasta julio 2026</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <span style="background:#1a5e34;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">2</span>
+            <span style="font-size:12px;color:#333">Recibe tu código de acceso por email en menos de 24 horas</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <span style="background:#1a5e34;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">3</span>
+            <span style="font-size:12px;color:#333">Ingresa el código aquí abajo y desbloquea todo</span>
+          </div>
+        </div>
+        <a href="https://go.hotmart.com/P106533865R" target="_blank"
+          style="display:block;text-align:center;margin-top:12px;padding:11px;background:#4caf50;color:#fff;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none">
+          ⚡ Comprar acceso — $9.99 →
+        </a>
+      </div>
+
+      <div style="text-align:center;font-size:11px;color:#aaa;margin-bottom:10px">— ¿ya tienes tu código? —</div>
+
       <input id="premium-code-input" type="text" placeholder="Ingresa tu código de acceso"
         style="width:100%;padding:12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:inherit;outline:none;text-align:center;text-transform:uppercase;letter-spacing:2px;box-sizing:border-box;margin-bottom:8px"
         onfocus="this.style.borderColor='#4caf50'" onblur="this.style.borderColor='#ddd'"
         onkeydown="if(event.key==='Enter') activatePremiumCode()">
       <div id="premium-code-msg" style="font-size:12px;color:#c00;margin-bottom:10px;min-height:16px;text-align:center"></div>
       <button id="premium-code-btn" onclick="activatePremiumCode()"
-        style="width:100%;padding:12px;background:#111;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;font-weight:500;margin-bottom:10px">
+        style="width:100%;padding:12px;background:#111;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;font-weight:500;margin-bottom:6px">
         Activar código →
       </button>
-      <div style="text-align:center;padding:10px;background:#f0fdf4;border-radius:8px;border:1px solid #86efac">
-        <div style="font-size:12px;color:#1a5e34;font-weight:600;margin-bottom:4px">¿Aún no tienes acceso?</div>
-        <div style="font-size:11px;color:#555;margin-bottom:8px">Mundial Pack · Acceso completo hasta julio 2026 · $9.99</div>
-        <a href="https://go.hotmart.com/P106533865R" target="_blank"
-          style="display:inline-block;padding:10px 20px;background:#4caf50;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">
-          ⚡ Obtener acceso premium →
-        </a>
-      </div>
+      <div style="text-align:center;font-size:11px;color:#aaa">¿Dudas? Escríbenos a <strong>futbolstatspro@gmail.com</strong></div>
     </div>
   </div>`;
 
