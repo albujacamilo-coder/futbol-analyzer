@@ -2804,9 +2804,37 @@ function openComparatorDirect(){
 }
 
 // ── RENDER RANKING ────────────────────────────────────────────────────────────
+// Detecta equipos eliminados basándose en resultados reales del bracket
+function getEliminatedTeams(){
+  const eliminated=new Set();
+  if(!BD) return eliminated;
+  const kofx=getKOFx();
+  const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.fin?[BD.fin]:[])];
+  allKO.forEach(m=>{
+    if(!m||!m.ta||!m.tb) return;
+    const r=kofx[m.id];
+    if(!r) return;
+    const winner=getKOWinner(m.id,m.ta,m.tb,r[0],r[1]);
+    if(!winner) return; // empate sin penales definidos aún
+    const loser=winner===m.ta?m.tb:m.ta;
+    eliminated.add(loser);
+  });
+  // También eliminados de fase de grupos (4° y a veces 3° lugar)
+  const fx=getFx();
+  for(const g of Object.keys(GRP)){
+    const rows=realGroupStandings(g,fx);
+    if(rows.every(r=>r.pj===3)){
+      // Grupo completo: eliminados son 4° siempre, y 3° si no está en mejores 8
+      eliminated.add(rows[3].name);
+    }
+  }
+  return eliminated;
+}
+
 function renderRanking(){
   const sorted=Object.entries(MCP).sort((a,b)=>b[1].p_champ-a[1].p_champ);
   const maxP=sorted[0]?sorted[0][1].p_champ:1;
+  const eliminated=getEliminatedTeams();
 
   if(!IS_PREMIUM){
     document.getElementById('rbody').innerHTML='';
@@ -2821,17 +2849,22 @@ function renderRanking(){
   }
 
   document.getElementById('rbody').innerHTML=sorted.map(([n,p],i)=>{
+    const isElim=eliminated.has(n);
     const med=i===0?`<span class="m1">1</span>`:i===1?`<span class="m2">2</span>`:i===2?`<span class="m3">3</span>`:i+1;
     const home=HOME[n]?`<span class="chip">sede</span>`:'';
-    return`<tr><td>${med}</td><td><strong style="cursor:pointer;color:#111;text-decoration:underline dotted #ccc" onclick="openTeamProfile('${n}')">${n}</strong>${home}</td><td style="font-size:10px;color:#888">${TD[n]?.conf||''}</td><td class="r">${(STR[n]||0).toFixed(3)}</td><td class="r">${p.p_group}%</td><td class="r">${p.p_r16}%</td><td class="r">${p.p_qf}%</td><td class="r">${p.p_final}%</td><td class="r"><strong>${p.p_champ}%</strong></td>
-    <td><div class="bwrap"><div class="bbar" style="width:${Math.round(p.p_champ/maxP*90)}px;background:#111"></div><span style="font-size:11px">${p.p_champ}%</span></div></td></tr>`;
+    const elimChip=isElim?`<span style="font-size:9px;background:#fde8e8;color:#c00;border-radius:4px;padding:1px 6px;font-weight:600;margin-left:5px;white-space:nowrap">✗ Eliminado</span>`:'';
+    const rowStyle=isElim?'opacity:.45;background:#fafafa':'';
+    const champPct=isElim?0:p.p_champ;
+    return`<tr style="${rowStyle}"><td>${med}</td><td><strong style="cursor:pointer;color:#111;text-decoration:underline dotted #ccc" onclick="openTeamProfile('${n}')">${n}</strong>${home}${elimChip}</td><td style="font-size:10px;color:#888">${TD[n]?.conf||''}</td><td class="r">${(STR[n]||0).toFixed(3)}</td><td class="r">${p.p_group}%</td><td class="r">${isElim?'0%':p.p_r16+'%'}</td><td class="r">${isElim?'0%':p.p_qf+'%'}</td><td class="r">${isElim?'0%':p.p_final+'%'}</td><td class="r"><strong>${isElim?'0%':p.p_champ+'%'}</strong></td>
+    <td><div class="bwrap"><div class="bbar" style="width:${isElim?0:Math.round(p.p_champ/maxP*90)}px;background:${isElim?'#ccc':'#111'}"></div><span style="font-size:11px">${champPct}%</span></div></td></tr>`;
   }).join('');
   const fx=getFx();
+  const activeTeams=sorted.filter(([n])=>!eliminated.has(n));
   document.getElementById('scards').innerHTML=`
     <div class="sc"><div class="sv">${Object.keys(fx).length}/72</div><div class="sl">Partidos jugados</div></div>
-    <div class="sc"><div class="sv">${sorted[0]?sorted[0][0]:'-'}</div><div class="sl">Favorito actual</div></div>
-    <div class="sc"><div class="sv">${sorted[0]?sorted[0][1].p_champ+'%':'-'}</div><div class="sl">% máx. campeón</div></div>
-    <div class="sc"><div class="sv">${NSIMS.toLocaleString()}</div><div class="sl">Simulaciones MC</div></div>
+    <div class="sc"><div class="sv">${activeTeams[0]?activeTeams[0][0]:'-'}</div><div class="sl">Favorito actual</div></div>
+    <div class="sc"><div class="sv">${activeTeams[0]?activeTeams[0][1].p_champ+'%':'-'}</div><div class="sl">% máx. campeón</div></div>
+    <div class="sc"><div class="sv">${eliminated.size}</div><div class="sl">Equipos eliminados</div></div>
     <div class="sc" style="cursor:pointer;background:#111;color:#fff" onclick="openComparatorDirect()">
       <div class="sv" style="font-size:14px">⚡</div>
       <div class="sl" style="color:#aaa">Comparar equipos</div>
