@@ -740,14 +740,14 @@ function simGrp(ms,u,fx){
 }
 
 const TSLOTS=[
-  {mid:"M74",rg:"E",ok:new Set(["A","B","C","D","F"])},
-  {mid:"M77",rg:"I",ok:new Set(["C","D","F","G","H"])},
-  {mid:"M79",rg:"A",ok:new Set(["C","E","F","H","I"])},
-  {mid:"M80",rg:"L",ok:new Set(["E","H","I","J","K"])},
-  {mid:"M81",rg:"D",ok:new Set(["B","E","F","I","J"])},
-  {mid:"M82",rg:"G",ok:new Set(["A","E","H","I","J"])},
-  {mid:"M85",rg:"B",ok:new Set(["E","F","G","I","J"])},
-  {mid:"M87",rg:"K",ok:new Set(["D","E","I","J","L"])},
+  {mid:"M74",rg:"D",ok:new Set(["A","B","C","D","F","G","H","I","J","K","L"])}, // Alemania(E) vs 3°D=Paraguay
+  {mid:"M78",rg:"F",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // Francia(I) vs 3°F=Suecia
+  {mid:"M79",rg:"E",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // México(A) vs 3°E=Ecuador
+  {mid:"M80",rg:"K",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // Inglaterra(L) vs 3°K=DR Congo
+  {mid:"M81",rg:"I",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // Bélgica(G) vs 3°I=Senegal
+  {mid:"M82",rg:"B",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // EE.UU.(D) vs 3°B=Bosnia
+  {mid:"M84",rg:"J",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // Suiza(B) vs 3°J=Argelia
+  {mid:"M87",rg:"L",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // Colombia(K) vs 3°L=Ghana
 ];
 function assignThirds(gr){
   const thirds=Object.entries(gr).map(([g,rows])=>({name:rows[2].name,group:g,pts:rows[2].pts,gd:rows[2].gf-rows[2].ga,gf:rows[2].gf}));
@@ -774,7 +774,7 @@ function simTournament(u,fx){
   const{asgn,all}=assignThirds(gr);
   all.forEach(n=>{rnd[n]=1;});
   const pos=(g,r)=>gr[g][r].name,g3=mid=>asgn[mid]||all[0];
-  const r32=[[pos("A",1),pos("B",1)],[pos("E",0),g3("M74")],[pos("F",0),pos("C",1)],[pos("C",0),pos("F",1)],[pos("I",0),g3("M77")],[pos("E",1),pos("I",1)],[pos("A",0),g3("M79")],[pos("L",0),g3("M80")],[pos("D",0),g3("M81")],[pos("G",0),g3("M82")],[pos("K",1),pos("L",1)],[pos("H",0),pos("J",1)],[pos("B",0),g3("M85")],[pos("J",0),pos("H",1)],[pos("K",0),g3("M87")],[pos("D",1),pos("G",1)]];
+  const r32=[[pos("A",1),pos("B",1)],[pos("E",0),g3("M74")],[pos("F",0),pos("C",1)],[pos("C",0),pos("F",1)],[pos("E",1),pos("I",1)],[pos("I",0),g3("M78")],[pos("A",0),g3("M79")],[pos("L",0),g3("M80")],[pos("G",0),g3("M81")],[pos("D",0),g3("M82")],[pos("H",0),pos("J",1)],[pos("B",0),g3("M84")],[pos("K",1),pos("L",1)],[pos("J",0),pos("H",1)],[pos("K",0),g3("M87")],[pos("D",1),pos("G",1)]];
   function pko(pairs,r){ return pairs.map(([a,b])=>{ const w=simMatch(a,b,u,true); rnd[w]=r; return w; }); }
   const w32=pko(r32,2);
   const r16=[[w32[1],w32[4]],[w32[0],w32[2]],[w32[3],w32[5]],[w32[6],w32[7]],[w32[10],w32[11]],[w32[8],w32[9]],[w32[13],w32[15]],[w32[12],w32[14]]];
