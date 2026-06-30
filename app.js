@@ -572,18 +572,18 @@ const MATCH_DATES = {
   "Inglaterra|Ghana":"2026-06-23","Panamá|Croacia":"2026-06-23",
   // ── Ronda de 32 — Calendario oficial FIFA 2026 ──
   "M73":"2026-06-28",  // Sudáfrica vs Canadá ✅
-  "M74":"2026-06-29",  // Brasil vs Japón
-  "M75":"2026-06-29",  // Alemania vs Paraguay
-  "M76":"2026-06-29",  // Países Bajos vs Marruecos
+  "M74":"2026-06-29",  // Alemania vs Paraguay
+  "M75":"2026-06-29",  // Países Bajos vs Marruecos
+  "M76":"2026-06-29",  // Brasil vs Japón
   "M77":"2026-06-30",  // Costa de Marfil vs Noruega
   "M78":"2026-06-30",  // Francia vs Suecia
   "M79":"2026-06-30",  // México vs Ecuador
   "M80":"2026-07-01",  // Inglaterra vs DR Congo
   "M81":"2026-07-01",  // Bélgica vs Senegal
   "M82":"2026-07-01",  // EE.UU. vs Bosnia
-  "M83":"2026-07-02",  // Portugal vs Croacia
-  "M84":"2026-07-02",  // España vs Austria
-  "M85":"2026-07-02",  // Suiza vs Argelia
+  "M83":"2026-07-02",  // España vs Austria
+  "M84":"2026-07-02",  // Suiza vs Argelia
+  "M85":"2026-07-02",  // Portugal vs Croacia
   "M86":"2026-07-03",  // Argentina vs Cabo Verde
   "M87":"2026-07-03",  // Colombia vs Ghana
   "M88":"2026-07-03",  // Australia vs Egipto
@@ -809,15 +809,24 @@ function calcBD(u){
   const pos=(g,r)=>gr[g][r],g3=mid=>({name:asgn[mid]||all[0]||''});
   function det(ta,tb){ const a=matchAnal(ta,tb,u); return{ta,tb,...a}; }
   const p=pos,g=g3;
+  // R32 oficial FIFA 2026 — emparejamientos reales confirmados
   const r32=[
-    {id:"M73",...det(p("A",1).name,p("B",1).name)},{id:"M74",...det(p("E",0).name,g("M74").name)},
-    {id:"M75",...det(p("F",0).name,p("C",1).name)},{id:"M76",...det(p("C",0).name,p("F",1).name)},
-    {id:"M77",...det(p("I",0).name,g("M77").name)},{id:"M78",...det(p("E",1).name,p("I",1).name)},
-    {id:"M79",...det(p("A",0).name,g("M79").name)},{id:"M80",...det(p("L",0).name,g("M80").name)},
-    {id:"M81",...det(p("D",0).name,g("M81").name)},{id:"M82",...det(p("G",0).name,g("M82").name)},
-    {id:"M83",...det(p("K",1).name,p("L",1).name)},{id:"M84",...det(p("H",0).name,p("J",1).name)},
-    {id:"M85",...det(p("B",0).name,g("M85").name)},{id:"M86",...det(p("J",0).name,p("H",1).name)},
-    {id:"M87",...det(p("K",0).name,g("M87").name)},{id:"M88",...det(p("D",1).name,p("G",1).name)},
+    {id:"M73",...det(p("A",1).name,p("B",1).name)},        // Sudáfrica (A2) vs Canadá (B2)
+    {id:"M74",...det(p("E",0).name,g("M74").name)},          // Alemania (E1) vs Paraguay (3°D)
+    {id:"M75",...det(p("F",0).name,p("C",1).name)},          // Países Bajos (F1) vs Marruecos (C2)
+    {id:"M76",...det(p("C",0).name,p("F",1).name)},          // Brasil (C1) vs Japón (F2)
+    {id:"M77",...det(p("E",1).name,p("I",1).name)},          // Costa de Marfil (E2) vs Noruega (I2)
+    {id:"M78",...det(p("I",0).name,g("M78").name)},          // Francia (I1) vs Suecia (3°F)
+    {id:"M79",...det(p("A",0).name,g("M79").name)},          // México (A1) vs Ecuador (3°E)
+    {id:"M80",...det(p("L",0).name,g("M80").name)},          // Inglaterra (L1) vs DR Congo (3°K)
+    {id:"M81",...det(p("G",0).name,g("M81").name)},          // Bélgica (G1) vs Senegal (3°I)
+    {id:"M82",...det(p("D",0).name,g("M82").name)},          // EE.UU. (D1) vs Bosnia (3°B)
+    {id:"M83",...det(p("H",0).name,p("J",1).name)},          // España (H1) vs Austria (J2)
+    {id:"M84",...det(p("B",0).name,g("M84").name)},          // Suiza (B1) vs Argelia (3°J)
+    {id:"M85",...det(p("K",1).name,p("L",1).name)},          // Portugal (K2) vs Croacia (L2)
+    {id:"M86",...det(p("J",0).name,p("H",1).name)},          // Argentina (J1) vs Cabo Verde (H2)
+    {id:"M87",...det(p("K",0).name,g("M87").name)},          // Colombia (K1) vs Ghana (3°L)
+    {id:"M88",...det(p("D",1).name,p("G",1).name)},          // Australia (D2) vs Egipto (G2)
   ];
   const w32=r32.map(m=>m.winner);
   function mk(pairs,ids){ return pairs.map(([a,b],i)=>({id:ids[i],...det(a,b)})); }
