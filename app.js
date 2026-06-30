@@ -752,32 +752,36 @@ const THIRD_SLOT_GROUPS={
   "M87":"L", // Colombia (K1) vs 3°L = Ghana
 };
 function assignThirds(gr){
-  const thirds=Object.entries(gr).map(([g,rows])=>({name:rows[2].name,group:g,pts:rows[2].pts,gd:rows[2].gf-rows[2].ga,gf:rows[2].gf}));
+  // Tercer lugar de cada grupo, ordenados de mejor a peor
+  const thirds=[];
+  for(const g of Object.keys(GRP)){
+    const row=gr[g][2];
+    thirds.push({name:row.name,group:g,pts:row.pts,gd:row.gf-row.ga,gf:row.gf});
+  }
   thirds.sort((a,b)=>(b.pts-a.pts)||(b.gd-a.gd)||(b.gf-a.gf));
-  console.log('DEBUG terceros ordenados:', thirds.map(t=>`${t.group}:${t.name}(${t.pts}pts,${t.gd}gd)`).join(' | '));
-  const best8=thirds.slice(0,8).map(t=>t.group);
-  console.log('DEBUG best8 groups:', best8);
+  const best8groups=new Set(thirds.slice(0,8).map(t=>t.group));
+
   const asgn={};
-  // Asignación directa: si el grupo del slot está entre los 8 mejores terceros, se asigna ese equipo
-  // Si no, se asigna por orden de mejor puntaje entre los grupos restantes (regla de sustitución FIFA)
-  const usedGroups=new Set();
-  Object.entries(THIRD_SLOT_GROUPS).forEach(([mid,wantedGroup])=>{
-    if(best8.includes(wantedGroup)&&!usedGroups.has(wantedGroup)){
+  // PASO 1: asignación directa — si el grupo deseado del slot calificó, se usa directo
+  for(const mid of Object.keys(THIRD_SLOT_GROUPS)){
+    const wantedGroup=THIRD_SLOT_GROUPS[mid];
+    if(best8groups.has(wantedGroup)){
       const t=thirds.find(x=>x.group===wantedGroup);
       asgn[mid]=t.name;
-      usedGroups.add(wantedGroup);
     }
-  });
-  // Para slots sin asignar (el grupo deseado no clasificó), usar el mejor tercero disponible no usado
-  const availableThirds=thirds.filter(t=>best8.includes(t.group)&&!usedGroups.has(t.group));
-  Object.keys(THIRD_SLOT_GROUPS).forEach(mid=>{
-    if(!asgn[mid]&&availableThirds.length){
-      const t=availableThirds.shift();
+  }
+  // PASO 2: para slots cuyo grupo NO calificó, usar el mejor tercero que SÍ calificó y aún no fue asignado
+  const usedGroups=new Set(Object.values(asgn).map(name=>thirds.find(t=>t.name===name)?.group));
+  const leftoverThirds=thirds.filter(t=>best8groups.has(t.group)&&!usedGroups.has(t.group));
+  for(const mid of Object.keys(THIRD_SLOT_GROUPS)){
+    if(!asgn[mid]&&leftoverThirds.length){
+      const t=leftoverThirds.shift();
       asgn[mid]=t.name;
       usedGroups.add(t.group);
     }
-  });
-  return{asgn,all:thirds.filter(t=>best8.includes(t.group)).map(t=>t.name)};
+  }
+  const allThirdNames=thirds.filter(t=>best8groups.has(t.group)).map(t=>t.name);
+  return{asgn,all:allThirdNames};
 }
 
 function simTournament(u,fx){
@@ -819,6 +823,8 @@ function calcProbs(u,fx){
 function calcGS(u,fx){ const gs={}; for(const[g,ms] of Object.entries(GRP)) gs[g]=simGrp(ms,u,fx); return gs; }
 function calcBD(u){
   const gr=GS; const{asgn,all}=assignThirds(gr);
+  console.log('DEBUG calcBD asgn:', asgn);
+  console.log('DEBUG calcBD GS.D (grupo D):', gr['D']);
   const pos=(g,r)=>gr[g][r],g3=mid=>({name:asgn[mid]||all[0]||''});
   function det(ta,tb){ const a=matchAnal(ta,tb,u); return{ta,tb,...a}; }
   const p=pos,g=g3;
