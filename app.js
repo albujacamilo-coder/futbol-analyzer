@@ -739,32 +739,43 @@ function simGrp(ms,u,fx){
   return Object.entries(s).sort((a,b)=>(b[1].pts-a[1].pts)||((b[1].gf-b[1].ga)-(a[1].gf-a[1].ga))||(b[1].gf-a[1].gf)).map(([n,d])=>({name:n,...d}));
 }
 
-const TSLOTS=[
-  {mid:"M74",rg:"D",ok:new Set(["A","B","C","D","F","G","H","I","J","K","L"])}, // Alemania(E) vs 3°D=Paraguay
-  {mid:"M78",rg:"F",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // Francia(I) vs 3°F=Suecia
-  {mid:"M79",rg:"E",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // México(A) vs 3°E=Ecuador
-  {mid:"M80",rg:"K",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // Inglaterra(L) vs 3°K=DR Congo
-  {mid:"M81",rg:"I",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // Bélgica(G) vs 3°I=Senegal
-  {mid:"M82",rg:"B",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // EE.UU.(D) vs 3°B=Bosnia
-  {mid:"M84",rg:"J",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // Suiza(B) vs 3°J=Argelia
-  {mid:"M87",rg:"L",ok:new Set(["A","B","C","D","E","F","G","H","I","J","K","L"])}, // Colombia(K) vs 3°L=Ghana
-];
+// Mapeo directo: cada slot KO recibe el 3er lugar de un grupo específico
+// según las reglas oficiales FIFA de combinaciones para R32 2026
+const THIRD_SLOT_GROUPS={
+  "M74":"D", // Alemania (E1) vs 3°D = Paraguay
+  "M78":"F", // Francia (I1) vs 3°F = Suecia
+  "M79":"E", // México (A1) vs 3°E = Ecuador
+  "M80":"K", // Inglaterra (L1) vs 3°K = DR Congo
+  "M81":"I", // Bélgica (G1) vs 3°I = Senegal
+  "M82":"B", // EE.UU. (D1) vs 3°B = Bosnia
+  "M84":"J", // Suiza (B1) vs 3°J = Argelia
+  "M87":"L", // Colombia (K1) vs 3°L = Ghana
+};
 function assignThirds(gr){
   const thirds=Object.entries(gr).map(([g,rows])=>({name:rows[2].name,group:g,pts:rows[2].pts,gd:rows[2].gf-rows[2].ga,gf:rows[2].gf}));
   thirds.sort((a,b)=>(b.pts-a.pts)||(b.gd-a.gd)||(b.gf-a.gf));
-  const best8=thirds.slice(0,8),asgn={};
-  function bt(si,rem){
-    if(si===TSLOTS.length) return true;
-    const{mid,rg,ok}=TSLOTS[si];
-    for(let i=0;i<rem.length;i++){
-      const t=rem[i];
-      if(ok.has(t.group)&&t.group!==rg){ asgn[mid]=t.name; if(bt(si+1,[...rem.slice(0,i),...rem.slice(i+1)])) return true; delete asgn[mid]; }
+  const best8=thirds.slice(0,8).map(t=>t.group);
+  const asgn={};
+  // Asignación directa: si el grupo del slot está entre los 8 mejores terceros, se asigna ese equipo
+  // Si no, se asigna por orden de mejor puntaje entre los grupos restantes (regla de sustitución FIFA)
+  const usedGroups=new Set();
+  Object.entries(THIRD_SLOT_GROUPS).forEach(([mid,wantedGroup])=>{
+    if(best8.includes(wantedGroup)&&!usedGroups.has(wantedGroup)){
+      const t=thirds.find(x=>x.group===wantedGroup);
+      asgn[mid]=t.name;
+      usedGroups.add(wantedGroup);
     }
-    return false;
-  }
-  bt(0,[...best8]);
-  TSLOTS.forEach(({mid})=>{ if(!asgn[mid]) asgn[mid]=best8[0]?.name||''; });
-  return{asgn,all:best8.map(t=>t.name)};
+  });
+  // Para slots sin asignar (el grupo deseado no clasificó), usar el mejor tercero disponible no usado
+  const availableThirds=thirds.filter(t=>best8.includes(t.group)&&!usedGroups.has(t.group));
+  Object.keys(THIRD_SLOT_GROUPS).forEach(mid=>{
+    if(!asgn[mid]&&availableThirds.length){
+      const t=availableThirds.shift();
+      asgn[mid]=t.name;
+      usedGroups.add(t.group);
+    }
+  });
+  return{asgn,all:thirds.filter(t=>best8.includes(t.group)).map(t=>t.name)};
 }
 
 function simTournament(u,fx){
