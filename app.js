@@ -754,7 +754,9 @@ const THIRD_SLOT_GROUPS={
 function assignThirds(gr){
   const thirds=Object.entries(gr).map(([g,rows])=>({name:rows[2].name,group:g,pts:rows[2].pts,gd:rows[2].gf-rows[2].ga,gf:rows[2].gf}));
   thirds.sort((a,b)=>(b.pts-a.pts)||(b.gd-a.gd)||(b.gf-a.gf));
+  console.log('DEBUG terceros ordenados:', thirds.map(t=>`${t.group}:${t.name}(${t.pts}pts,${t.gd}gd)`).join(' | '));
   const best8=thirds.slice(0,8).map(t=>t.group);
+  console.log('DEBUG best8 groups:', best8);
   const asgn={};
   // Asignación directa: si el grupo del slot está entre los 8 mejores terceros, se asigna ese equipo
   // Si no, se asigna por orden de mejor puntaje entre los grupos restantes (regla de sustitución FIFA)
