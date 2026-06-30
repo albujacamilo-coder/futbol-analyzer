@@ -823,8 +823,6 @@ function calcProbs(u,fx){
 function calcGS(u,fx){ const gs={}; for(const[g,ms] of Object.entries(GRP)) gs[g]=simGrp(ms,u,fx); return gs; }
 function calcBD(u){
   const gr=GS; const{asgn,all}=assignThirds(gr);
-  console.log('DEBUG calcBD asgn:', asgn);
-  console.log('DEBUG calcBD GS.D (grupo D):', gr['D']);
   const pos=(g,r)=>gr[g][r],g3=mid=>({name:asgn[mid]||all[0]||''});
   function det(ta,tb){ const a=matchAnal(ta,tb,u); return{ta,tb,...a}; }
   const p=pos,g=g3;
