@@ -27,6 +27,19 @@ if(SAVED_CODE && SAVED_CODE_EXPIRY){
   }
 }
 
+// ── HELPER: fecha de expiración dinámica (30 días desde hoy) ──────────────────
+// Se usa solo para el TEXTO del modal (marketing). El expiry REAL de cada
+// código se define al insertarlo en Supabase (columna caduca_en).
+// IMPORTANTE: al generar cada código (manual o automatizado en Fase 2),
+// usa esta misma lógica de +30 días desde la fecha de compra para que el
+// mensaje del modal y el acceso real siempre coincidan.
+function calcExpiryLabel(days = 30) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return `${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+}
+
 // Verificar código contra Supabase
 async function verifyCode(code){
   try{
@@ -48,6 +61,8 @@ async function verifyCode(code){
 function showPremiumModal(){
   const existing = document.getElementById('premium-modal');
   if(existing) existing.remove();
+
+  const expiryLabel = calcExpiryLabel(30);
 
   const html = `<div class="modal-box" style="max-width:400px">
     <div class="modal-hdr">
@@ -84,7 +99,7 @@ function showPremiumModal(){
         <div style="display:flex;flex-direction:column;gap:8px">
           <div style="display:flex;gap:8px;align-items:flex-start">
             <span style="background:#1a5e34;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">1</span>
-            <span style="font-size:12px;color:#333">Compra el acceso — pago único $9.99, válido hasta julio 2026</span>
+            <span style="font-size:12px;color:#333">Compra el acceso — pago único $4.99, válido 30 días (hasta el ${expiryLabel})</span>
           </div>
           <div style="display:flex;gap:8px;align-items:flex-start">
             <span style="background:#1a5e34;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">2</span>
@@ -97,7 +112,7 @@ function showPremiumModal(){
         </div>
         <a href="https://go.hotmart.com/P106533865R" target="_blank"
           style="display:block;text-align:center;margin-top:12px;padding:11px;background:#4caf50;color:#fff;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none">
-          ⚡ Comprar acceso — $9.99 →
+          ⚡ Comprar acceso — $4.99 →
         </a>
       </div>
 
