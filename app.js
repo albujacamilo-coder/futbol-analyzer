@@ -827,7 +827,7 @@ function simTournament(u,fx){
   const r32=[[pos("A",1),pos("B",1)],[pos("E",0),g3("M74")],[pos("F",0),pos("C",1)],[pos("C",0),pos("F",1)],[pos("E",1),pos("I",1)],[pos("I",0),g3("M78")],[pos("A",0),g3("M79")],[pos("L",0),g3("M80")],[pos("G",0),g3("M81")],[pos("D",0),g3("M82")],[pos("H",0),pos("J",1)],[pos("B",0),g3("M84")],[pos("K",1),pos("L",1)],[pos("J",0),pos("H",1)],[pos("K",0),g3("M87")],[pos("D",1),pos("G",1)]];
   function pko(pairs,r){ return pairs.map(([a,b])=>{ const w=simMatch(a,b,u,true); rnd[w]=r; return w; }); }
   const w32=pko(r32,2);
-  const r16=[[w32[1],w32[5]],[w32[0],w32[2]],[w32[3],w32[4]],[w32[6],w32[7]],[w32[10],w32[11]],[w32[8],w32[9]],[w32[13],w32[15]],[w32[12],w32[14]]];
+  const r16=[[w32[1],w32[5]],[w32[0],w32[2]],[w32[3],w32[4]],[w32[6],w32[7]],[w32[10],w32[12]],[w32[8],w32[9]],[w32[13],w32[15]],[w32[11],w32[14]]];
   const w16=pko(r16,3);
   const qf=[[w16[0],w16[1]],[w16[4],w16[5]],[w16[2],w16[3]],[w16[6],w16[7]]];
   const wq=pko(qf,4);
@@ -890,7 +890,7 @@ function calcBD(u){
   ];
   const w32=r32.map(m=>m.winner);
   function mk(pairs,ids){ return pairs.map(([a,b],i)=>({id:ids[i],...det(a,b,ids[i])})); }
-  const r16=mk([[w32[1],w32[5]],[w32[0],w32[2]],[w32[3],w32[4]],[w32[6],w32[7]],[w32[10],w32[11]],[w32[8],w32[9]],[w32[13],w32[15]],[w32[12],w32[14]]],["M89","M90","M91","M92","M93","M94","M95","M96"]);
+  const r16=mk([[w32[1],w32[5]],[w32[0],w32[2]],[w32[3],w32[4]],[w32[6],w32[7]],[w32[10],w32[12]],[w32[8],w32[9]],[w32[13],w32[15]],[w32[11],w32[14]]],["M89","M90","M91","M92","M93","M94","M95","M96"]);
   const w16=r16.map(m=>m.winner);
   const qf=mk([[w16[0],w16[1]],[w16[4],w16[5]],[w16[2],w16[3]],[w16[6],w16[7]]],["M97","M98","M99","M100"]);
   const wq=qf.map(m=>m.winner);
