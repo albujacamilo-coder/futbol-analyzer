@@ -3578,6 +3578,10 @@ function initApp(){
   const originalLabels=['✏️ Resultados','📊 Partidos','🏟️ Grupos','🏆 Bracket','📈 Probabilidades','🎯 Aciertos'];
   tabBtns.forEach((t,i)=>{ if(originalLabels[i]) t.innerHTML=originalLabels[i]; });
 
+  // Restaurar el botón "Actualizar modelo" por si LigaPro lo reprogramó
+  const btnrunReset=document.getElementById('btnrun');
+  if(btnrunReset){ btnrunReset.onclick=runModel; btnrunReset.textContent='▶ Actualizar modelo'; }
+
   // Ocultar elementos admin si no es admin
   if(!IS_ADMIN){
     document.querySelectorAll('.tab').forEach(function(t){
@@ -3688,6 +3692,7 @@ function initApp(){
 // Ver función enterCompetition() arriba
 
 
+
 // ═══════════════════════════════════════════════════════════════════════════
 // ── LIGAPRO ECUADOR — MÓDULO (no modifica nada del Mundial) ─────────────────
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3697,13 +3702,10 @@ function initApp(){
 //     - Hexagonal por el título: puestos 1-6, 10 fechas → campeón + cupos Libertadores
 //     - Cuadrangular internacional: puestos 7-10, 6 fechas → cupo Sudamericana
 //     - Hexagonal por el descenso: puestos 11-16, 10 fechas → 2 descienden
-//   Por ahora solo está activa la Fase Regular — la lógica de Fase Final se
-//   agrega cuando se acerque la fecha 30.
+//   Por ahora solo está activa la Fase Regular.
 //
-// IMPORTANTE sobre el calendario: LigaPro solo publica 2 fechas por adelantado
-// (no existe el calendario completo de la temporada de una vez). Por eso
-// LIGA_FIXTURES se actualiza a mano cada semana con las fechas que la liga
-// vaya confirmando — este es el "chequeo semanal" que hablamos.
+// Calendario: LigaPro solo publica 2 fechas por adelantado. LIGA_FIXTURES se
+// actualiza a mano cada semana con lo que la liga vaya confirmando.
 
 const LIGA_TEAMS = [
   "Independiente del Valle","Deportivo Cuenca","U. Católica","Barcelona SC",
@@ -3711,7 +3713,6 @@ const LIGA_TEAMS = [
   "Guayaquil City","Mushuc Runa","Leones FC","Libertad","Delfín","Manta FC"
 ];
 
-// pj/pts/gf/ga = acumulado real a la Fecha 16 (2026) · titles = títulos históricos de Serie A
 const LIGA_TD = {
   "Independiente del Valle": {pj:16, pts:37, gf:32, ga:18, titles:3},
   "Deportivo Cuenca":        {pj:16, pts:27, gf:18, ga:17, titles:2},
@@ -3744,7 +3745,6 @@ const LIGA_CARD_IDX = {
   "Leones FC":6.0, "Libertad":6.5, "Delfín":5.8, "Manta FC":6.0
 };
 
-// ── CALENDARIO (se actualiza a mano cada semana con lo que la liga confirme) ─
 const LIGA_FIXTURES = {
   "Fecha 17": [
     {ta:"Independiente del Valle", tb:"Manta FC",             date:"2026-07-03"},
@@ -3769,8 +3769,8 @@ const LIGA_FIXTURES = {
 };
 
 let LIGA_STR = {};
-let LIGA_RR = {}; // resultados ingresados a mano, clave "equipoA|equipoB"
-let LIGA_PD = []; // lista de partidos con análisis (equivalente a PD del Mundial)
+let LIGA_RR = {};
+let LIGA_PD = [];
 
 function ligaNorm(v, lo, hi){ return Math.max(0, Math.min(1, (v-lo)/(hi-lo))); }
 
@@ -3830,10 +3830,12 @@ function ligaMatchAnal(ta, tb, u){
   }
   const tot=wa+wd+wb, matSum=p_over25+p_under25, bttsSum=p_btts+p_no_btts;
   const totalLambda=la+lb, p_no_goal=Math.exp(-totalLambda);
+  const htA=+(la*0.45).toFixed(2), htB=+(lb*0.45).toFixed(2);
   return {
     la:+la.toFixed(2), lb:+lb.toFixed(2), xg_total:+(la+lb).toFixed(2),
     xgRA: la>=0.75?Math.round(la):0, xgRB: lb>=0.75?Math.round(lb):0,
     xgRStr: `${la>=0.75?Math.round(la):0}-${lb>=0.75?Math.round(lb):0}`,
+    htA, htB, htRA: htA>=0.75?Math.round(htA):0, htRB: htB>=0.75?Math.round(htB):0,
     pw_a:+(wa/tot).toFixed(3), pd:+(wd/tot).toFixed(3), pw_b:+(wb/tot).toFixed(3),
     p_over25:+(p_over25/matSum).toFixed(3), p_under25:+(p_under25/matSum).toFixed(3),
     p_over15:+(p_over15/matSum).toFixed(3), p_over35:+(p_over35/matSum).toFixed(3),
@@ -3866,7 +3868,26 @@ function ligaGetResult(ta, tb){
   return null;
 }
 
-// ── TABLA DE POSICIONES (base + resultados nuevos ingresados a mano) ───────
+// Últimos resultados jugados de un equipo (según fixtures cargados hasta ahora)
+function ligaTeamForm(name){
+  const played = [];
+  for(const[fecha, matches] of Object.entries(LIGA_FIXTURES)){
+    matches.forEach(m=>{
+      if(m.ta!==name && m.tb!==name) return;
+      const real = ligaGetResult(m.ta, m.tb);
+      if(!real) return;
+      const isHome = m.ta===name;
+      const myG = isHome?real.ga:real.gb, oppG = isHome?real.gb:real.ga;
+      const opp = isHome?m.tb:m.ta;
+      const result = myG>oppG?'W':(myG===oppG?'D':'L');
+      played.push({date:m.date, opp, myG, oppG, result});
+    });
+  }
+  played.sort((a,b)=>a.date.localeCompare(b.date));
+  return played.slice(-3);
+}
+
+// ── TABLA DE POSICIONES ─────────────────────────────────────────────────────
 function ligaCalcStandings(){
   const rows = LIGA_TEAMS.map(n=>{
     const base = LIGA_TD[n];
@@ -3923,7 +3944,7 @@ function ligaOpenTeamProfile(name){
   alert(name + '\n\nPerfil detallado — próximamente en una siguiente iteración.');
 }
 
-// ── CONSTRUIR LISTA DE PARTIDOS CON ANÁLISIS (equivalente a buildPD) ───────
+// ── CONSTRUIR LISTA DE PARTIDOS CON ANÁLISIS ────────────────────────────────
 function ligaBuildPD(){
   const u = ligaBayesUpd();
   const data = [];
@@ -3941,7 +3962,7 @@ function ligaBuildPD(){
   return data;
 }
 
-// ── TARJETA DE PARTIDO (mismo formato visual que el Mundial) ───────────────
+// ── TARJETA DE PARTIDO ──────────────────────────────────────────────────────
 function ligaRenderPCard(m){
   const maxP = Math.max(m.pw_a, m.pd, m.pw_b);
   const hiA = m.pw_a===maxP, hiD = m.pd===maxP&&!hiA, hiB = m.pw_b===maxP&&!hiA&&!hiD;
@@ -4002,26 +4023,76 @@ function ligaRenderPartidos(){
   let html = '';
   let lastFecha = '';
   LIGA_PD.forEach(m=>{
-    if(m.fecha !== lastFecha){ lastFecha = m.fecha; html += `<p class="slabel">${m.fecha}</p><div class="pmgrid">`; }
+    if(m.fecha !== lastFecha){
+      if(lastFecha) html += '</div>';   // ← FIX: cerrar el grid anterior antes de abrir uno nuevo
+      lastFecha = m.fecha;
+      html += `<p class="slabel">${m.fecha}</p><div class="pmgrid">`;
+    }
     html += ligaRenderPCard(m);
   });
   if(lastFecha) html += '</div>';
-  html += `<p style="font-size:11px;color:#999;margin-top:1rem">Calendario cargado: ${Object.keys(LIGA_FIXTURES).join(', ')} · se amplía cada semana cuando LigaPro confirme más fechas</p>`;
+  html += `<p style="font-size:11px;color:#999;margin-top:1rem">Calendario cargado: ${Object.keys(LIGA_FIXTURES).join(', ')} · se amplía cada semana</p>`;
   cont.innerHTML = html;
 }
 
-// ── MODAL DE ANÁLISIS COMPLETO (mismo formato que el Mundial, simplificado) ─
+// ── MODAL DE ANÁLISIS COMPLETO — con tabs Goles / Corners / Tarjetas ───────
+function ligaOuTeamHtml(name, pScore, p15, p25){
+  return '<div class="ou-team-block">'
+    +'<div class="ou-team-name">'+name.split(' ')[0]+'</div>'
+    +'<table class="ou-team-table"><thead><tr><th>Línea</th><th>Over</th><th>Under</th></tr></thead><tbody>'
+    +'<tr class="'+(pScore>=0.5?'ou-tr-hi':'')+'"><td><strong>0.5</strong></td><td class="'+(pScore>=0.5?'td-hi-g':'')+'"><strong>'+Math.round(pScore*100)+'%</strong></td><td class="'+((1-pScore)>=0.5?'td-hi-r':'')+'"><strong>'+Math.round((1-pScore)*100)+'%</strong></td></tr>'
+    +'<tr class="'+(p15>=0.5?'ou-tr-hi':'')+'"><td><strong>1.5</strong></td><td class="'+(p15>=0.5?'td-hi-g':'')+'"><strong>'+Math.round(p15*100)+'%</strong></td><td class="'+((1-p15)>=0.5?'td-hi-r':'')+'"><strong>'+Math.round((1-p15)*100)+'%</strong></td></tr>'
+    +'<tr class="'+(p25>=0.4?'ou-tr-hi':'')+'"><td><strong>2.5</strong></td><td class="'+(p25>=0.4?'td-hi-g':'')+'"><strong>'+Math.round(p25*100)+'%</strong></td><td class="'+((1-p25)>=0.6?'td-hi-r':'')+'"><strong>'+Math.round((1-p25)*100)+'%</strong></td></tr>'
+    +'</tbody></table></div>';
+}
+
+function ligaFormDots(form){
+  if(!form.length) return '<span style="font-size:11px;color:#aaa">Sin partidos registrados aún</span>';
+  return form.map(r=>{
+    const bg = r.result==='W'?'#d4edda':r.result==='D'?'#e8e8e8':'#fde8e8';
+    const col = r.result==='W'?'#1a5e34':r.result==='D'?'#666':'#c00';
+    return `<span title="vs ${r.opp}: ${r.myG}-${r.oppG}" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${bg};color:${col};font-size:10px;font-weight:700">${r.result}</span>`;
+  }).join(' ');
+}
+
 function ligaOpenMatchModal(key){
   const m = window._LIGA_PCARDS[key];
   if(!m) return;
   const existing = document.getElementById('liga-match-modal');
   if(existing) existing.remove();
 
+  const p_score_a=+(1-Math.exp(-m.la)).toFixed(3), p_score_b=+(1-Math.exp(-m.lb)).toFixed(3);
+  const p_15_a=+(1-Math.exp(-m.la)*(1+m.la)).toFixed(3), p_15_b=+(1-Math.exp(-m.lb)*(1+m.lb)).toFixed(3);
+  const p_25_a=+(1-Math.exp(-m.la)*(1+m.la+m.la*m.la/2)).toFixed(3), p_25_b=+(1-Math.exp(-m.lb)*(1+m.lb+m.lb*m.lb/2)).toFixed(3);
+
   const [ca, cb] = ligaCornerCalc(m.ta, m.tb);
   const cTotal = +(ca+cb).toFixed(2);
+  const cLines = [2.5,3.5,4.5,5.5,6.5,7.5,8.5];
+  const cGlobalLines = [5.5,6.5,7.5,8.5,9.5,10.5];
+  const cGlobalOU = cornerOUTable(cTotal, cGlobalLines);
+  const cOUa = cornerOUTable(ca, cLines), cOUb = cornerOUTable(cb, cLines);
+
   const [tla, tlb] = ligaCardCalc(m.ta, m.tb);
   const tTotal = +(tla+tlb).toFixed(2);
-  const maxP = Math.max(m.pw_a, m.pd, m.pw_b);
+  const tLines = [0.5,1.5,2.5];
+  const tGlobalLines = [2.5,3.5,4.5];
+  const tGlobalOU = cornerOUTable(tTotal, tGlobalLines);
+  const tOUa = cornerOUTable(tla, tLines), tOUb = cornerOUTable(tlb, tLines);
+
+  function pillStyle(p){
+    if(p>=0.65) return 'background:#d4edda;color:#1a5e34;border:1px solid #86efac';
+    if(p>=0.50) return 'background:#fff3cd;color:#856404;border:1px solid #fcd34d';
+    return 'background:#f0f0f0;color:#888;border:1px solid transparent';
+  }
+  function ouRow(r){
+    return '<tr><td><strong>'+r.line+'</strong></td>'
+      +'<td><span style="display:inline-block;padding:2px 8px;border-radius:5px;font-weight:600;font-size:12px;'+pillStyle(r.pOver)+'">'+Math.round(r.pOver*100)+'%</span></td>'
+      +'<td><span style="display:inline-block;padding:2px 8px;border-radius:5px;font-weight:600;font-size:12px;'+pillStyle(r.pUnder)+'">'+Math.round(r.pUnder*100)+'%</span></td></tr>';
+  }
+  function teamBlock(name, lambda, rows){
+    return '<div class="ou-team-block"><div class="ou-team-name">'+name.split(' ')[0]+' <span style="font-size:10px;color:#888;font-weight:400">λ='+lambda+'</span></div>'
+      +'<table class="ou-team-table"><thead><tr><th>Línea</th><th>Over</th><th>Under</th></tr></thead><tbody>'+rows.map(ouRow).join('')+'</tbody></table></div>';
+  }
 
   const scores=[];
   for(let i=0;i<8;i++) for(let j=0;j<8;j++) scores.push({s:i+'-'+j, p:pPmf(i,m.la)*pPmf(j,m.lb)*dcF(i,j,m.la,m.lb)});
@@ -4029,33 +4100,40 @@ function ligaOpenMatchModal(key){
   const top5 = scores.slice(0,5);
   const top5sum = top5.reduce((s,x)=>s+x.p,0);
 
-  const html = `<div class="modal-box">
-    <div class="modal-hdr">
-      <div>
-        <div class="modal-title">${m.ta} vs ${m.tb}</div>
-        <div class="modal-sub">${m.fecha} · ${m.played?'Jugado':'Pendiente'}</div>
-      </div>
-      <button class="modal-close" onclick="document.getElementById('liga-match-modal').remove()">&#x2715;</button>
-    </div>
+  const formA = ligaTeamForm(m.ta), formB = ligaTeamForm(m.tb);
+  const maxP = Math.max(m.pw_a, m.pd, m.pw_b);
+  const maxFirst = Math.max(m.p_a_first, m.p_b_first);
 
-    <div class="modal-section" style="border-bottom:1px solid #f0f0f0">
-      <div class="modal-sec-title">Probabilidades de victoria</div>
-      <div class="probs-row">
-        <div class="pbox${m.pw_a===maxP?' hi':''}"><div class="pv">${Math.round(m.pw_a*100)}%</div><div class="pl">Gana ${m.ta.split(' ')[0]}</div></div>
-        <div class="pbox${m.pd===maxP&&m.pw_a!==maxP?' hi':''}"><div class="pv">${Math.round(m.pd*100)}%</div><div class="pl">Empate</div></div>
-        <div class="pbox${m.pw_b===maxP&&m.pw_a!==maxP&&m.pd!==maxP?' hi':''}"><div class="pv">${Math.round(m.pw_b*100)}%</div><div class="pl">Gana ${m.tb.split(' ')[0]}</div></div>
-      </div>
-    </div>
+  function firstGoalPill(pct, label, isMax){
+    const bg = isMax?'#d4edda':'#f0f0f0', col = isMax?'#1a5e34':'#888', bdr = isMax?'1px solid #86efac':'1px solid transparent';
+    return `<div style="flex:1;text-align:center;padding:10px 6px;border-radius:10px;background:${bg};border:${bdr}">
+      <div style="font-size:22px;font-weight:700;color:${col}">${Math.round(pct*100)}%</div>
+      <div style="font-size:10px;color:${col};margin-top:3px;font-weight:500">${label}</div>
+    </div>`;
+  }
 
+  const golesHtml = `
     <div class="modal-section">
       <div class="modal-sec-title">Expected Goals (xG)</div>
       <div class="xgs">
         <div class="xgrow"><div class="xgra">${m.xgRA}</div><div class="xglbl">xG redondeado</div><div class="xgrb">${m.xgRB}</div></div>
         <hr class="xgdiv">
         <div class="xgrow"><div class="xgva">${m.la}</div><div class="xglbl">xG exacto · total ${m.xg_total}</div><div class="xgvb">${m.lb}</div></div>
+        <hr class="xgdiv">
+        <div class="xgrow"><div class="xghta">${m.htRA} <span style="opacity:.6">(${m.htA})</span></div><div class="xglbl">xG medio tiempo</div><div class="xghtb"><span style="opacity:.6">(${m.htB})</span> ${m.htRB}</div></div>
       </div>
     </div>
-
+    <div class="modal-section">
+      <div class="modal-sec-title">🥅 ¿Quién marca primero?</div>
+      <div style="display:flex;gap:8px;align-items:stretch">
+        ${firstGoalPill(m.p_a_first, 'Marca primero<br>'+m.ta.split(' ')[0], m.p_a_first===maxFirst)}
+        ${firstGoalPill(m.p_b_first, 'Marca primero<br>'+m.tb.split(' ')[0], m.p_b_first===maxFirst)}
+        <div style="flex:1;text-align:center;padding:10px 6px;border-radius:10px;background:#f0f0f0;border:1px solid transparent">
+          <div style="font-size:22px;font-weight:700;color:#888">${Math.round(m.p_no_goal*100)}%</div>
+          <div style="font-size:10px;color:#888;margin-top:3px;font-weight:500">Sin goles<br>(0-0)</div>
+        </div>
+      </div>
+    </div>
     <div class="modal-section">
       <div class="modal-sec-title">Top 5 resultados más probables</div>
       <div class="top5-grid">
@@ -4067,7 +4145,6 @@ function ligaOpenMatchModal(key){
         <div class="top5-note">Otros resultados: ${((1-top5sum)*100).toFixed(0)}% de probabilidad combinada</div>
       </div>
     </div>
-
     <div class="modal-section">
       <div class="modal-sec-title">Over / Under — Partido completo</div>
       <div class="ou-btts"><div class="ou-row">
@@ -4077,7 +4154,6 @@ function ligaOpenMatchModal(key){
         <div class="ou-item${m.p_under25>0.5?' ou-hi':''}"><div class="ou-val">${Math.round(m.p_under25*100)}%</div><div class="ou-lbl">Under 2.5</div></div>
       </div></div>
     </div>
-
     <div class="modal-section">
       <div class="modal-sec-title">BTTS — Ambos equipos marcan</div>
       <div class="ou-btts"><div class="ou-row">
@@ -4085,25 +4161,93 @@ function ligaOpenMatchModal(key){
         <div class="ou-item${m.p_no_btts>0.5?' btts-no-hi':''}"><div class="ou-val">${Math.round(m.p_no_btts*100)}%</div><div class="ou-lbl">No BTTS ❌</div></div>
       </div></div>
     </div>
-
     <div class="modal-section">
-      <div class="modal-sec-title">📐 Corners esperados</div>
-      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:#f5f5f5;border-radius:10px;padding:12px 14px">
-        <div style="text-align:right"><div style="font-size:20px;font-weight:700">${ca}</div><div style="font-size:10px;color:#888">${m.ta.split(' ')[0]}</div></div>
-        <div style="text-align:center"><div style="font-size:9px;color:#aaa;text-transform:uppercase">Total</div><div style="font-size:22px;font-weight:700">${cTotal}</div></div>
-        <div style="text-align:left"><div style="font-size:20px;font-weight:700">${cb}</div><div style="font-size:10px;color:#888">${m.tb.split(' ')[0]}</div></div>
+      <div class="modal-sec-title">Over / Under — Por equipo</div>
+      <div class="ou-teams-grid">
+        ${ligaOuTeamHtml(m.ta, p_score_a, p_15_a, p_25_a)}
+        ${ligaOuTeamHtml(m.tb, p_score_b, p_15_b, p_25_b)}
       </div>
     </div>
-
     <div class="modal-section">
-      <div class="modal-sec-title">🟨 Tarjetas esperadas</div>
-      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:#f5f5f5;border-radius:10px;padding:12px 14px">
-        <div style="text-align:right"><div style="font-size:20px;font-weight:700">${tla}</div><div style="font-size:10px;color:#888">${m.ta.split(' ')[0]}</div></div>
-        <div style="text-align:center"><div style="font-size:9px;color:#aaa;text-transform:uppercase">Total</div><div style="font-size:22px;font-weight:700">${tTotal}</div></div>
-        <div style="text-align:left"><div style="font-size:20px;font-weight:700">${tlb}</div><div style="font-size:10px;color:#888">${m.tb.split(' ')[0]}</div></div>
+      <div class="modal-sec-title">Forma reciente (últimos partidos registrados)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="text-align:center"><div style="font-size:11px;color:#888;margin-bottom:6px">${m.ta}</div>${ligaFormDots(formA)}</div>
+        <div style="text-align:center"><div style="font-size:11px;color:#888;margin-bottom:6px">${m.tb}</div>${ligaFormDots(formB)}</div>
       </div>
-      <div style="font-size:10px;color:#aaa;margin-top:8px;font-style:italic">* Corners y tarjetas estimados por índice de estilo de juego — igual que en el Mundial, es la parte más subjetiva del modelo.</div>
+      <p style="font-size:10px;color:#aaa;margin-top:8px">Solo refleja partidos ingresados desde que empezamos a trackear (Fecha 17 en adelante) — se irá completando con cada fecha nueva.</p>
+    </div>`;
+
+  const cornersHtml = `
+    <div class="modal-section">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:#f5f5f5;border-radius:10px;padding:14px 16px">
+        <div style="text-align:right"><div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">${m.ta}</div><div style="font-size:28px;font-weight:700">${ca}</div><div style="font-size:10px;color:#aaa;margin-top:2px">corners esp.</div></div>
+        <div style="text-align:center"><div style="font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase">Total esp.</div><div style="font-size:32px;font-weight:700">${cTotal}</div></div>
+        <div style="text-align:left"><div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">${m.tb}</div><div style="font-size:28px;font-weight:700">${cb}</div><div style="font-size:10px;color:#aaa;margin-top:2px">corners esp.</div></div>
+      </div>
     </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Over / Under — Partido completo</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:5px">
+        ${cGlobalOU.map(r=>`<div style="text-align:center;padding:7px 4px;border-radius:8px;${pillStyle(r.pOver)}"><div style="font-size:13px;font-weight:700">${Math.round(r.pOver*100)}%</div><div style="font-size:9px;font-weight:500;margin-top:2px">O${r.line}</div></div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px">
+        ${cGlobalOU.map(r=>`<div style="text-align:center;padding:7px 4px;border-radius:8px;${pillStyle(r.pUnder)}"><div style="font-size:13px;font-weight:700">${Math.round(r.pUnder*100)}%</div><div style="font-size:9px;font-weight:500;margin-top:2px">U${r.line}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Over / Under — Por equipo</div>
+      <div class="ou-teams-grid">${teamBlock(m.ta, ca, cOUa)}${teamBlock(m.tb, cb, cOUb)}</div>
+    </div>
+    <div class="modal-section">
+      <p style="font-size:11px;color:#888;line-height:1.5">Se calcula con distribución de Poisson (igual que los goles). El promedio esperado de corners parte de un índice de estilo de juego estimado por nosotros — no existe data pública de corners históricos por equipo en LigaPro.</p>
+    </div>`;
+
+  const tarjetasHtml = `
+    <div class="modal-section">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:#f5f5f5;border-radius:10px;padding:14px 16px">
+        <div style="text-align:right"><div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">${m.ta}</div><div style="font-size:28px;font-weight:700">${tla}</div><div style="font-size:10px;color:#aaa;margin-top:2px">tarjetas esp.</div></div>
+        <div style="text-align:center"><div style="font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase">Total esp.</div><div style="font-size:32px;font-weight:700">${tTotal}</div></div>
+        <div style="text-align:left"><div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">${m.tb}</div><div style="font-size:28px;font-weight:700">${tlb}</div><div style="font-size:10px;color:#aaa;margin-top:2px">tarjetas esp.</div></div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Over / Under — Partido completo</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px">
+        ${tGlobalOU.map(r=>`<div style="text-align:center;padding:7px 4px;border-radius:8px;${pillStyle(r.pOver)}"><div style="font-size:13px;font-weight:700">${Math.round(r.pOver*100)}%</div><div style="font-size:9px;font-weight:500;margin-top:2px">O${r.line}</div></div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+        ${tGlobalOU.map(r=>`<div style="text-align:center;padding:7px 4px;border-radius:8px;${pillStyle(r.pUnder)}"><div style="font-size:13px;font-weight:700">${Math.round(r.pUnder*100)}%</div><div style="font-size:9px;font-weight:500;margin-top:2px">U${r.line}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Over / Under — Por equipo</div>
+      <div class="ou-teams-grid">${teamBlock(m.ta, tla, tOUa)}${teamBlock(m.tb, tlb, tOUb)}</div>
+    </div>
+    <div class="modal-section">
+      <p style="font-size:11px;color:#888;line-height:1.5">Basado en el índice histórico de agresividad estimado por estilo de juego. El árbitro designado puede influir en el total real — úsalo como referencia de tendencia.</p>
+    </div>`;
+
+  const html = `<div class="modal-box">
+    <div class="modal-hdr">
+      <div><div class="modal-title">${m.ta} vs ${m.tb}</div><div class="modal-sub">${m.fecha} · ${m.played?'Jugado':'Pendiente'}</div></div>
+      <button class="modal-close" onclick="document.getElementById('liga-match-modal').remove()">&#x2715;</button>
+    </div>
+    <div class="modal-section" style="border-bottom:1px solid #f0f0f0">
+      <div class="modal-sec-title">Probabilidades de victoria</div>
+      <div class="probs-row">
+        <div class="pbox${m.pw_a===maxP?' hi':''}"><div class="pv">${Math.round(m.pw_a*100)}%</div><div class="pl">Gana ${m.ta.split(' ')[0]}</div></div>
+        <div class="pbox${m.pd===maxP&&m.pw_a!==maxP?' hi':''}"><div class="pv">${Math.round(m.pd*100)}%</div><div class="pl">Empate</div></div>
+        <div class="pbox${m.pw_b===maxP&&m.pw_a!==maxP&&m.pd!==maxP?' hi':''}"><div class="pv">${Math.round(m.pw_b*100)}%</div><div class="pl">Gana ${m.tb.split(' ')[0]}</div></div>
+      </div>
+    </div>
+    <div style="display:flex;border-bottom:1px solid #e0e0e0;background:#fafafa">
+      <button id="liga-mtab-goles" onclick="ligaSwitchModalTab('goles')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid #111;color:#111;font-family:inherit">⚽ Goles</button>
+      <button id="liga-mtab-corners" onclick="ligaSwitchModalTab('corners')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit">📐 Corners</button>
+      <button id="liga-mtab-tarjetas" onclick="ligaSwitchModalTab('tarjetas')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit">🟨 Tarjetas</button>
+    </div>
+    <div id="liga-mtab-content-goles">${golesHtml}</div>
+    <div id="liga-mtab-content-corners" style="display:none">${cornersHtml}</div>
+    <div id="liga-mtab-content-tarjetas" style="display:none">${tarjetasHtml}</div>
   </div>`;
 
   const overlay = document.createElement('div');
@@ -4112,6 +4256,19 @@ function ligaOpenMatchModal(key){
   overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
   overlay.innerHTML = html;
   document.body.appendChild(overlay);
+}
+
+function ligaSwitchModalTab(tab){
+  ['goles','corners','tarjetas'].forEach(t=>{
+    const btn = document.getElementById('liga-mtab-'+t);
+    const content = document.getElementById('liga-mtab-content-'+t);
+    if(!btn||!content) return;
+    const active = t===tab;
+    btn.style.borderBottom = active?'2px solid #111':'2px solid transparent';
+    btn.style.color = active?'#111':'#888';
+    btn.style.fontWeight = active?'600':'400';
+    content.style.display = active?'block':'none';
+  });
 }
 
 // ── ENTRADA MANUAL DE RESULTADOS — organizada por fecha ────────────────────
@@ -4169,6 +4326,23 @@ async function ligaLoadFromSupabase(){
   } catch(e){ console.warn('Error cargando LigaPro desde Supabase:', e); }
 }
 
+// ── ACTUALIZAR (liviano, solo recalcula — no toca nada del Mundial) ────────
+function ligaRefreshModel(){
+  const btn = document.getElementById('btnrun');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Actualizando...'; }
+  setTimeout(()=>{
+    ligaRenderStandings();
+    ligaRenderPartidos();
+    if(IS_ADMIN) ligaRenderAdminInput();
+    if(btn){ btn.disabled = false; btn.textContent = '🔄 Actualizar'; }
+    const hdrSub = document.getElementById('hdr-sub');
+    if(hdrSub){
+      const now = new Date();
+      hdrSub.innerHTML = '✅ Actualizado a las ' + now.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    }
+  }, 200);
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────────
 async function ligaInitApp(){
   ligaInitStr();
@@ -4179,9 +4353,18 @@ async function ligaInitApp(){
 
   document.querySelectorAll('.tab').forEach(t=>{
     if(t.textContent.includes('Bracket')) t.style.display='none';
-    if(t.textContent.includes('Grupos')||t.innerHTML.includes('📊 Tabla')) t.innerHTML='📊 Tabla';
-    if(t.textContent.includes('Partidos')||t.innerHTML.includes('🔮')) t.innerHTML='📅 Partidos';
+    if(t.textContent.includes('Grupos')) t.innerHTML='📊 Tabla';
+    if(t.textContent.includes('Partidos')) t.innerHTML='📅 Partidos';
   });
+
+  // El botón "Actualizar modelo" pasa a ser liviano y propio de LigaPro,
+  // en vez de correr el Monte Carlo pesado del Mundial
+  const btn = document.getElementById('btnrun');
+  if(btn){
+    btn.onclick = ligaRefreshModel;
+    btn.textContent = '🔄 Actualizar';
+  }
+
   const panelRanking = document.getElementById('panel-ranking');
   const panelTracker = document.getElementById('panel-tracker');
   if(panelRanking) panelRanking.innerHTML = '<div class="infobox">Probabilidades de título, Libertadores, Sudamericana y descenso — disponible cuando se acerque la Fase Final (fecha 30).</div>';
