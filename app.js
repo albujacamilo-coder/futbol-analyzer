@@ -3586,6 +3586,10 @@ function initApp(){
   const rfiltReset = document.querySelector('.rfilt');
   if(rfiltReset) rfiltReset.style.display = '';
 
+  // Restaurar el botón de sincronización (LigaPro lo oculta)
+  const btnSyncReset = document.getElementById('btn-sync');
+  if(btnSyncReset) btnSyncReset.style.display = '';
+
   // Ocultar elementos admin si no es admin
   if(!IS_ADMIN){
     document.querySelectorAll('.tab').forEach(function(t){
@@ -4451,6 +4455,10 @@ async function ligaInitApp(){
     btn.onclick = ligaRefreshModel;
     btn.textContent = '🔄 Actualizar';
   }
+
+  // El botón "Sincronizar resultados" no aplica — LigaPro no tiene fuente automática
+  const btnSync = document.getElementById('btn-sync');
+  if(btnSync) btnSync.style.display = 'none';
 
   const panelRanking = document.getElementById('panel-ranking');
   const panelTracker = document.getElementById('panel-tracker');
