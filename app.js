@@ -3582,6 +3582,10 @@ function initApp(){
   const btnrunReset=document.getElementById('btnrun');
   if(btnrunReset){ btnrunReset.onclick=runModel; btnrunReset.textContent='▶ Actualizar modelo'; }
 
+  // Restaurar el filtro de fases (LigaPro lo oculta)
+  const rfiltReset = document.querySelector('.rfilt');
+  if(rfiltReset) rfiltReset.style.display = '';
+
   // Ocultar elementos admin si no es admin
   if(!IS_ADMIN){
     document.querySelectorAll('.tab').forEach(function(t){
@@ -4013,6 +4017,17 @@ function ligaRenderPCard(m){
   </div>`;
 }
 
+let LIGA_SEARCH_Q = '';
+
+function ligaFilterMatches(val){
+  LIGA_SEARCH_Q = val || '';
+  ligaRenderPartidos();
+  setTimeout(()=>{
+    const inp = document.getElementById('liga-search-input');
+    if(inp){ inp.focus(); inp.setSelectionRange(LIGA_SEARCH_Q.length, LIGA_SEARCH_Q.length); }
+  }, 10);
+}
+
 function ligaRenderPartidos(){
   const cont = document.getElementById('pcont');
   if(!cont) return;
@@ -4020,11 +4035,33 @@ function ligaRenderPartidos(){
   window._LIGA_PCARDS = {};
   LIGA_PD.forEach(m=>{ window._LIGA_PCARDS[m.ta+'|'+m.tb] = m; });
 
-  let html = '';
+  const sq = LIGA_SEARCH_Q.toLowerCase().trim().replace(/\bvs\b/g,'').trim();
+  const sqParts = sq.split(/\s+/).filter(Boolean);
+  function matchesSearch(m){
+    if(!sq) return true;
+    const ta=m.ta.toLowerCase(), tb=m.tb.toLowerCase();
+    if(sqParts.length>=2) return sqParts.every(p=>ta.includes(p)||tb.includes(p));
+    return ta.includes(sq)||tb.includes(sq);
+  }
+
+  let html = `<div style="margin-bottom:.8rem">
+    <input id="liga-search-input" type="text" placeholder="🔍 Buscar equipo o partido (ej: Barcelona · Barcelona Emelec)" value="${LIGA_SEARCH_Q}"
+      oninput="ligaFilterMatches(this.value)"
+      style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box"
+      onfocus="this.style.borderColor='#111'" onblur="this.style.borderColor='#ddd'">
+  </div>`;
+
+  const filtered = LIGA_PD.filter(matchesSearch);
+  if(!filtered.length){
+    html += `<div class="infobox">No se encontraron partidos para <strong>"${LIGA_SEARCH_Q}"</strong>.<br><span style="font-size:11px;color:#aaa">Prueba con un equipo ("Barcelona") o dos equipos ("Barcelona Emelec")</span></div>`;
+    cont.innerHTML = html;
+    return;
+  }
+
   let lastFecha = '';
-  LIGA_PD.forEach(m=>{
+  filtered.forEach(m=>{
     if(m.fecha !== lastFecha){
-      if(lastFecha) html += '</div>';   // ← FIX: cerrar el grid anterior antes de abrir uno nuevo
+      if(lastFecha) html += '</div>';
       lastFecha = m.fecha;
       html += `<p class="slabel">${m.fecha}</p><div class="pmgrid">`;
     }
@@ -4356,6 +4393,10 @@ async function ligaInitApp(){
     if(t.textContent.includes('Grupos')) t.innerHTML='📊 Tabla';
     if(t.textContent.includes('Partidos')) t.innerHTML='📅 Partidos';
   });
+
+  // Ocultar el filtro de fases del Mundial (Grupos/R32/Octavos...) — no aplica a LigaPro
+  const rfilt = document.querySelector('.rfilt');
+  if(rfilt) rfilt.style.display = 'none';
 
   // El botón "Actualizar modelo" pasa a ser liviano y propio de LigaPro,
   // en vez de correr el Monte Carlo pesado del Mundial
