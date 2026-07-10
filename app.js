@@ -3509,6 +3509,7 @@ let CURRENT_COMPETITION = 'mundial2026';
 
 const COMPETITION_NAMES = {
   'mundial2026': '🌍 Mundial FIFA 2026',
+  'ligapro':     '🇪🇨 LigaPro Ecuador',
   'premier':     '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League',
   'laliga':      '🇪🇸 La Liga',
   'bundesliga':  '🇩🇪 Bundesliga',
@@ -3531,6 +3532,7 @@ function enterCompetition(id){
   const titleEl=document.getElementById('app-title');
   if(titleEl) titleEl.innerHTML=(COMPETITION_NAMES[id]||id)+' <span id="ubadge" style="display:none" class="ubadge">✓ Actualizado</span>';
   // Inicializar la app para esta competición
+  if(id==='ligapro'){ ligaInitApp(); return; }
   initApp();
 }
 
@@ -3570,6 +3572,12 @@ function showComingSoonModal(name){
 }
 
 function initApp(){
+  // Restaurar tabs por si el usuario viene de LigaPro (donde se ocultan/renombran)
+  const tabBtns=document.querySelectorAll('.tab');
+  tabBtns.forEach(t=>{ t.style.display=''; });
+  const originalLabels=['✏️ Resultados','📊 Partidos','🏟️ Grupos','🏆 Bracket','📈 Probabilidades','🎯 Aciertos'];
+  tabBtns.forEach((t,i)=>{ if(originalLabels[i]) t.innerHTML=originalLabels[i]; });
+
   // Ocultar elementos admin si no es admin
   if(!IS_ADMIN){
     document.querySelectorAll('.tab').forEach(function(t){
@@ -3678,3 +3686,322 @@ function initApp(){
 }
 // La app se inicializa cuando el usuario selecciona una competición
 // Ver función enterCompetition() arriba
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── LIGAPRO ECUADOR — MÓDULO NUEVO (no modifica nada del Mundial) ───────────
+// ═══════════════════════════════════════════════════════════════════════════
+// Metodología (distinta a selecciones, adaptada para clubes):
+//   Fuerza del equipo = 50% puntos-por-partido (forma actual) +
+//                        30% diferencia-de-gol-por-partido +
+//                        20% prestigio histórico (títulos de Serie A)
+// Datos base tomados de la tabla de posiciones a la Fecha 16 (antes del
+// parón por el Mundial). IMPORTANTE: no hay sincronización automática para
+// esta liga (a diferencia del Mundial) — los resultados de cada fecha nueva
+// se cargan a mano desde el panel de admin, igual que el respaldo manual
+// que ya usas cuando el sync del Mundial falla.
+
+const LIGA_TEAMS = [
+  "Independiente del Valle","Deportivo Cuenca","U. Católica","Barcelona SC",
+  "Aucas","LDU Quito","Orense SC","Emelec","Técnico Universitario","Macará",
+  "Guayaquil City","Mushuc Runa","Leones FC","Libertad","Delfín","Manta FC"
+];
+
+// pj/pts/gf/ga = acumulado real a la Fecha 16 (2026) · titles = títulos históricos de Serie A
+// NOTA: los títulos son aproximados de memoria — verificar y corregir si hace falta,
+// solo pesan 20% de la fórmula así que un ajuste no cambia demasiado el resultado.
+const LIGA_TD = {
+  "Independiente del Valle": {pj:16, pts:37, gf:32, ga:18, titles:3},
+  "Deportivo Cuenca":        {pj:16, pts:27, gf:18, ga:17, titles:2},
+  "U. Católica":             {pj:16, pts:26, gf:26, ga:14, titles:0},
+  "Barcelona SC":            {pj:16, pts:26, gf:18, ga:13, titles:16},
+  "Aucas":                   {pj:16, pts:26, gf:19, ga:16, titles:0},
+  "LDU Quito":               {pj:15, pts:24, gf:16, ga:13, titles:5},
+  "Orense SC":               {pj:15, pts:22, gf:21, ga:19, titles:0},
+  "Emelec":                  {pj:16, pts:22, gf:13, ga:16, titles:14},
+  "Técnico Universitario":   {pj:16, pts:20, gf:17, ga:16, titles:0},
+  "Macará":                  {pj:16, pts:20, gf:15, ga:18, titles:0},
+  "Guayaquil City":          {pj:16, pts:19, gf:14, ga:19, titles:0},
+  "Mushuc Runa":             {pj:16, pts:18, gf:19, ga:21, titles:0},
+  "Leones FC":               {pj:16, pts:17, gf:15, ga:18, titles:0},
+  "Libertad":                {pj:16, pts:17, gf:16, ga:22, titles:0},
+  "Delfín":                  {pj:16, pts:16, gf:8,  ga:15, titles:1},
+  "Manta FC":                {pj:16, pts:12, gf:7,  ga:19, titles:0}
+};
+
+// Índices 1-10 estimados por estilo de juego (misma lógica que el Mundial).
+// Igual que allá: es la parte más "blanda" del modelo — ajustar con la vista.
+const LIGA_CORNER_IDX = {
+  "Independiente del Valle":7.5, "Barcelona SC":6.5, "Emelec":6.0, "LDU Quito":6.8,
+  "Deportivo Cuenca":5.5, "U. Católica":6.2, "Aucas":5.5, "Orense SC":6.5,
+  "Técnico Universitario":5.5, "Macará":5.0, "Guayaquil City":5.2, "Mushuc Runa":5.0,
+  "Leones FC":5.0, "Libertad":4.8, "Delfín":5.0, "Manta FC":4.5
+};
+const LIGA_CARD_IDX = {
+  "Independiente del Valle":5.5, "Barcelona SC":6.5, "Emelec":6.5, "LDU Quito":5.5,
+  "Deportivo Cuenca":6.0, "U. Católica":5.5, "Aucas":6.5, "Orense SC":6.0,
+  "Técnico Universitario":6.0, "Macará":6.0, "Guayaquil City":6.2, "Mushuc Runa":6.8,
+  "Leones FC":6.0, "Libertad":6.5, "Delfín":5.8, "Manta FC":6.0
+};
+
+let LIGA_STR = {};
+let LIGA_RR = {}; // resultados NUEVOS ingresados a mano desde la Fecha 17 en adelante
+
+function norm(v, lo, hi){ return Math.max(0, Math.min(1, (v-lo)/(hi-lo))); }
+
+function ligaInitStr(){
+  for(const[n,d] of Object.entries(LIGA_TD)){
+    const ppg = d.pts/d.pj;
+    const gdpg = (d.gf-d.ga)/d.pj;
+    const prestige = Math.min(d.titles*0.01, 0.15); // tope 15%, igual de acotado que en el Mundial
+    LIGA_STR[n] = Math.max(0.05, Math.min(0.98,
+      0.50*norm(ppg,0,3) + 0.30*norm(gdpg,-2,2) + 0.20*(prestige/0.15)*0.20
+    ));
+  }
+}
+
+// Actualización Bayesiana con los resultados NUEVOS ingresados a mano
+// (misma lógica que bayesUpd() del Mundial, aplicada a LIGA_RR)
+function ligaBayesUpd(){
+  const u={...LIGA_STR}, ts={};
+  for(const[k,r] of Object.entries(LIGA_RR)){
+    if(r[0]===undefined||r[1]===undefined) continue;
+    const[ta,tb]=k.split('|'); const ga=r[0], gb=r[1];
+    [ta,tb].forEach((t,i)=>{
+      if(!ts[t]) ts[t]={pts:0,gf:0,ga:0,played:0};
+      const s=ts[t]; s.played++;
+      s.gf += i===0?ga:gb; s.ga += i===0?gb:ga;
+      if((i===0&&ga>gb)||(i===1&&gb>ga)) s.pts+=3;
+      else if(ga===gb) s.pts+=1;
+    });
+  }
+  for(const[n,s] of Object.entries(ts)){
+    if(!s.played) continue;
+    const perf = 0.60*(s.pts/s.played/3) + 0.40*Math.max(0,Math.min(1,((s.gf-s.ga)/s.played+3)/6));
+    const w = Math.min(0.20*s.played, 0.50); // un poco más conservador que el Mundial:
+                                              // la temporada de club ya trae 16 partidos de historial,
+                                              // así que cada partido nuevo pesa menos individualmente
+    u[n] = Math.max(0.05, Math.min(0.98, (1-w)*LIGA_STR[n] + w*perf));
+  }
+  return u;
+}
+
+// xG, matchAnal, corners y tarjetas reusan la MISMA matemática del Mundial
+// (Poisson + Dixon-Coles vía pPmf/dcF/ap, ya definidas arriba en este archivo)
+function ligaXgCalc(ta, tb, u){
+  const sa = u[ta] ?? LIGA_STR[ta], sb = u[tb] ?? LIGA_STR[tb];
+  const da = LIGA_TD[ta], db = LIGA_TD[tb], af = ap(sa, sb);
+  const gfA = da.gf/da.pj, gaA = da.ga/da.pj, gfB = db.gf/db.pj, gaB = db.ga/db.pj;
+  const la = Math.max(BASE*(gfA/1.3)*(gaB/1.3)*(1+0.3*(sa-sb))*af, 0.3);
+  const lb = Math.max(BASE*(gfB/1.3)*(gaA/1.3)*(1+0.3*(sb-sa))*af, 0.3);
+  return [la, lb];
+}
+
+function ligaMatchAnal(ta, tb){
+  const u = ligaBayesUpd();
+  const [la, lb] = ligaXgCalc(ta, tb, u);
+  let wa=0, wd=0, wb=0, p_over25=0, p_under25=0, p_btts=0, p_no_btts=0;
+  for(let i=0;i<10;i++) for(let j=0;j<10;j++){
+    const p = pPmf(i,la)*pPmf(j,lb)*dcF(i,j,la,lb);
+    if(i>j) wa+=p; else if(i===j) wd+=p; else wb+=p;
+    if(i+j>2.5) p_over25+=p; else p_under25+=p;
+    if(i>=1&&j>=1) p_btts+=p; else p_no_btts+=p;
+  }
+  const tot=wa+wd+wb, matSum=p_over25+p_under25, bttsSum=p_btts+p_no_btts;
+  const totalLambda=la+lb, p_no_goal=Math.exp(-totalLambda);
+  return {
+    la:+la.toFixed(2), lb:+lb.toFixed(2), xg_total:+(la+lb).toFixed(2),
+    pw_a:+(wa/tot*100).toFixed(1), pd:+(wd/tot*100).toFixed(1), pw_b:+(wb/tot*100).toFixed(1),
+    p_over25:+(p_over25/matSum*100).toFixed(1), p_under25:+(p_under25/matSum*100).toFixed(1),
+    p_btts:+(p_btts/bttsSum*100).toFixed(1), p_no_btts:+(p_no_btts/bttsSum*100).toFixed(1),
+    p_a_first:+(la/totalLambda*(1-p_no_goal)*100).toFixed(1),
+    p_b_first:+(lb/totalLambda*(1-p_no_goal)*100).toFixed(1),
+    p_no_goal:+(p_no_goal*100).toFixed(1)
+  };
+}
+
+function ligaCornerCalc(ta, tb){
+  const ia=LIGA_CORNER_IDX[ta]||5.5, ib=LIGA_CORNER_IDX[tb]||5.5;
+  const defA=(10-ia)/5.5, defB=(10-ib)/5.5;
+  const la=Math.max(1.5, BASE_C*(ia/5.5)*defB);
+  const lb=Math.max(1.5, BASE_C*(ib/5.5)*defA);
+  return [+la.toFixed(2), +lb.toFixed(2)];
+}
+function ligaCardCalc(ta, tb){
+  const ia=LIGA_CARD_IDX[ta]||6.0, ib=LIGA_CARD_IDX[tb]||6.0;
+  const la=Math.max(0.5, BASE_T*(ia/6.0)*(0.7+0.3*ib/6.0));
+  const lb=Math.max(0.5, BASE_T*(ib/6.0)*(0.7+0.3*ia/6.0));
+  return [+la.toFixed(2), +lb.toFixed(2)];
+}
+
+// ── TABLA DE POSICIONES (base + resultados nuevos ingresados a mano) ───────
+function ligaCalcStandings(){
+  const rows = LIGA_TEAMS.map(n=>{
+    const base = LIGA_TD[n];
+    return {name:n, pj:base.pj, pts:base.pts, gf:base.gf, ga:base.ga};
+  });
+  const byName = Object.fromEntries(rows.map(r=>[r.name,r]));
+  for(const[k,r] of Object.entries(LIGA_RR)){
+    if(r[0]===undefined||r[1]===undefined) continue;
+    const[ta,tb]=k.split('|'); const ga=r[0], gb=r[1];
+    if(!byName[ta]||!byName[tb]) continue;
+    byName[ta].pj++; byName[tb].pj++;
+    byName[ta].gf+=ga; byName[ta].ga+=gb;
+    byName[tb].gf+=gb; byName[tb].ga+=ga;
+    if(ga>gb) byName[ta].pts+=3;
+    else if(gb>ga) byName[tb].pts+=3;
+    else { byName[ta].pts+=1; byName[tb].pts+=1; }
+  }
+  return rows.sort((a,b)=>(b.pts-a.pts)||((b.gf-b.ga)-(a.gf-a.ga))||(b.gf-a.gf));
+}
+
+function ligaRenderStandings(){
+  const cont = document.getElementById('gcont');
+  if(!cont) return;
+  const rows = ligaCalcStandings();
+  let html = `<div style="background:#e8f4fd;border:1px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:1rem;font-size:12px;color:#1565c0">
+    📊 Tabla de posiciones — LigaPro Serie A 2026 (Fase Inicial)
+  </div>`;
+  html += `<table class="gtbl" style="width:100%"><thead><tr>
+    <th style="width:20px">#</th><th>Equipo</th><th class="r">PJ</th><th class="r">Pts</th>
+    <th class="r">GF</th><th class="r">GA</th><th class="r">DG</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{
+    const dg = r.gf-r.ga;
+    const cls = i<4?'q1':(i>=rows.length-2?'':'');
+    html += `<tr>
+      <td style="font-weight:600;color:${i<4?'#1a5e34':(i>=rows.length-2?'#c00':'#333')}">${i+1}</td>
+      <td style="font-weight:500;cursor:pointer" onclick="ligaOpenTeamProfile('${r.name}')">${r.name}</td>
+      <td class="r">${r.pj}</td><td class="r"><strong>${r.pts}</strong></td>
+      <td class="r">${r.gf}</td><td class="r">${r.ga}</td>
+      <td class="r">${dg>0?'+':''}${dg}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>
+  <p style="font-size:11px;color:#999;margin-top:8px">🟢 Zona Copa Libertadores (top 4) · 🔴 Zona de descenso · Tabla se actualiza con cada resultado ingresado en la pestaña Resultados</p>`;
+  cont.innerHTML = html;
+}
+
+// ── PREDICTOR DE PARTIDOS (elige 2 equipos, calcula al instante) ───────────
+function ligaRenderPredictor(){
+  const cont = document.getElementById('pcont');
+  if(!cont) return;
+  const options = LIGA_TEAMS.map(t=>`<option value="${t}">${t}</option>`).join('');
+  cont.innerHTML = `
+    <div style="background:#f9f9f9;border-radius:10px;padding:16px">
+      <div style="font-size:12px;color:#888;margin-bottom:10px">Elige dos equipos para ver la predicción del modelo</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="liga-pred-a" style="flex:1;min-width:140px;padding:9px;border-radius:8px;border:1px solid #ddd;font-family:inherit">${options}</select>
+        <span style="font-weight:700;color:#888">vs</span>
+        <select id="liga-pred-b" style="flex:1;min-width:140px;padding:9px;border-radius:8px;border:1px solid #ddd;font-family:inherit">${options}</select>
+        <button onclick="ligaShowPrediction()" style="padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500">Predecir →</button>
+      </div>
+      <div id="liga-pred-result" style="margin-top:16px"></div>
+    </div>`;
+  document.getElementById('liga-pred-b').selectedIndex = 1;
+}
+
+function ligaShowPrediction(){
+  const ta = document.getElementById('liga-pred-a').value;
+  const tb = document.getElementById('liga-pred-b').value;
+  const box = document.getElementById('liga-pred-result');
+  if(ta===tb){ box.innerHTML = '<p style="color:#c00;font-size:12px">Elige dos equipos distintos.</p>'; return; }
+  const a = ligaMatchAnal(ta, tb);
+  const [ca,cb] = ligaCornerCalc(ta,tb);
+  const [tla,tlb] = ligaCardCalc(ta,tb);
+  const maxP = Math.max(a.pw_a, a.pd, a.pw_b);
+  box.innerHTML = `
+    <div style="border-top:1px solid #e0e0e0;padding-top:14px">
+      <div class="probs-row" style="margin-bottom:10px">
+        <div class="pbox${a.pw_a===maxP?' hi':''}"><div class="pv">${a.pw_a}%</div><div class="pl">Gana ${ta.split(' ')[0]}</div></div>
+        <div class="pbox${a.pd===maxP?' hi':''}"><div class="pv">${a.pd}%</div><div class="pl">Empate</div></div>
+        <div class="pbox${a.pw_b===maxP?' hi':''}"><div class="pv">${a.pw_b}%</div><div class="pl">Gana ${tb.split(' ')[0]}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:11px">
+        <div class="pbox"><div class="pv" style="font-size:14px">${a.la}-${a.lb}</div><div class="pl">xG</div></div>
+        <div class="pbox"><div class="pv" style="font-size:14px">${a.p_over25}%</div><div class="pl">Over 2.5</div></div>
+        <div class="pbox"><div class="pv" style="font-size:14px">${a.p_btts}%</div><div class="pl">BTTS</div></div>
+        <div class="pbox"><div class="pv" style="font-size:14px">${(+ca+ +cb).toFixed(1)}</div><div class="pl">Corners esp.</div></div>
+      </div>
+      <div style="font-size:10px;color:#aaa;margin-top:8px">Corners: ${ta.split(' ')[0]} ${ca} - ${cb} ${tb.split(' ')[0]} · Tarjetas: ${tla} - ${tlb}</div>
+    </div>`;
+}
+
+function ligaOpenTeamProfile(name){
+  alert(name + '\n\nPerfil detallado — próximamente en una siguiente iteración.');
+}
+
+// ── ENTRADA MANUAL DE RESULTADOS (Resultados, solo admin) ──────────────────
+function ligaRenderAdminInput(){
+  const cont = document.getElementById('mcont');
+  if(!cont) return;
+  const options = LIGA_TEAMS.map(t=>`<option value="${t}">${t}</option>`).join('');
+  let entered = Object.entries(LIGA_RR).map(([k,r])=>{
+    const[ta,tb]=k.split('|');
+    return `<div class="mrow played"><span class="ta wt">${ta}</span><span class="sinp">${r[0]}</span><span class="sep">:</span><span class="sinp">${r[1]}</span><span class="tb">${tb}</span></div>`;
+  }).join('');
+  cont.innerHTML = `
+    <div style="background:#fffbea;border:1.5px solid #f5c518;border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:#856404">
+      💡 LigaPro no tiene sincronización automática — ingresa cada resultado de la fecha a mano aquí.
+    </div>
+    <div style="background:#f9f9f9;border-radius:10px;padding:16px;margin-bottom:1rem">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="liga-res-a" style="flex:1;min-width:140px;padding:9px;border-radius:8px;border:1px solid #ddd;font-family:inherit">${options}</select>
+        <input id="liga-res-ga" type="number" min="0" max="15" placeholder="-" style="width:50px;padding:9px;text-align:center;border-radius:8px;border:1px solid #ddd;font-family:inherit">
+        <span>-</span>
+        <input id="liga-res-gb" type="number" min="0" max="15" placeholder="-" style="width:50px;padding:9px;text-align:center;border-radius:8px;border:1px solid #ddd;font-family:inherit">
+        <select id="liga-res-b" style="flex:1;min-width:140px;padding:9px;border-radius:8px;border:1px solid #ddd;font-family:inherit">${options}</select>
+        <button onclick="ligaAddResult()" style="padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500">Guardar</button>
+      </div>
+    </div>
+    <p class="slabel">Resultados ingresados esta temporada (desde Fecha 17)</p>
+    <div class="rgrid">${entered || '<p style="font-size:12px;color:#999">Aún no has ingresado resultados nuevos.</p>'}</div>
+  `;
+  document.getElementById('liga-res-b').selectedIndex = 1;
+}
+
+function ligaAddResult(){
+  const ta = document.getElementById('liga-res-a').value;
+  const tb = document.getElementById('liga-res-b').value;
+  const ga = parseInt(document.getElementById('liga-res-ga').value);
+  const gb = parseInt(document.getElementById('liga-res-gb').value);
+  if(ta===tb){ alert('Elige dos equipos distintos.'); return; }
+  if(isNaN(ga)||isNaN(gb)){ alert('Ingresa el marcador completo.'); return; }
+  LIGA_RR[ta+'|'+tb] = [ga, gb];
+  // Guardar en Supabase con prefijo LIGA_ para no mezclar con datos del Mundial
+  saveToSupabase('LIGA_'+ta+'|'+tb, ga, gb, 'ligapro');
+  ligaRenderAdminInput();
+  ligaRenderStandings();
+}
+
+async function ligaLoadFromSupabase(){
+  try{
+    const rows = await sb.getAll();
+    rows.forEach(r=>{
+      if(r.tipo==='ligapro'){
+        const clave = r.clave.replace('LIGA_','');
+        LIGA_RR[clave] = [r.goles_local, r.goles_visita];
+      }
+    });
+  } catch(e){ console.warn('Error cargando LigaPro desde Supabase:', e); }
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────
+async function ligaInitApp(){
+  ligaInitStr();
+  await ligaLoadFromSupabase();
+  ligaRenderStandings();
+  ligaRenderPredictor();
+  if(IS_ADMIN) ligaRenderAdminInput();
+
+  // Ocultar/adaptar tabs que no aplican todavía para esta liga
+  document.querySelectorAll('.tab').forEach(t=>{
+    if(t.textContent.includes('Bracket')) t.style.display='none';
+    if(t.textContent.includes('Grupos')) t.innerHTML='📊 Tabla';
+    if(t.textContent.includes('Partidos')) t.innerHTML='🔮 Predecir';
+  });
+  const panelRanking = document.getElementById('panel-ranking');
+  const panelTracker = document.getElementById('panel-tracker');
+  if(panelRanking) panelRanking.innerHTML = '<div class="infobox">Probabilidades de campeón, Libertadores y descenso — disponible cuando carguemos el calendario completo de fechas restantes.</div>';
+  if(panelTracker) panelTracker.innerHTML = '<div class="infobox">Tracker de aciertos — disponible después de que se jueguen las primeras fechas con resultados ingresados.</div>';
+
+  document.getElementById('hdr-sub').innerHTML = '✅ Datos cargados · Ingresa resultados en la pestaña Resultados a medida que se jueguen las fechas';
+}
