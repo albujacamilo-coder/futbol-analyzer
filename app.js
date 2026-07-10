@@ -3687,18 +3687,23 @@ function initApp(){
 // La app se inicializa cuando el usuario selecciona una competición
 // Ver función enterCompetition() arriba
 
+
 // ═══════════════════════════════════════════════════════════════════════════
-// ── LIGAPRO ECUADOR — MÓDULO NUEVO (no modifica nada del Mundial) ───────────
+// ── LIGAPRO ECUADOR — MÓDULO (no modifica nada del Mundial) ─────────────────
 // ═══════════════════════════════════════════════════════════════════════════
-// Metodología (distinta a selecciones, adaptada para clubes):
-//   Fuerza del equipo = 50% puntos-por-partido (forma actual) +
-//                        30% diferencia-de-gol-por-partido +
-//                        20% prestigio histórico (títulos de Serie A)
-// Datos base tomados de la tabla de posiciones a la Fecha 16 (antes del
-// parón por el Mundial). IMPORTANTE: no hay sincronización automática para
-// esta liga (a diferencia del Mundial) — los resultados de cada fecha nueva
-// se cargan a mano desde el panel de admin, igual que el respaldo manual
-// que ya usas cuando el sync del Mundial falla.
+// Formato real de LigaPro 2026 (para referencia futura):
+//   Fase Regular: 16 equipos, todos contra todos ida y vuelta, 30 fechas.
+//   Fase Final (arranca cuando termine la fecha 30, los puntos NO se reinician):
+//     - Hexagonal por el título: puestos 1-6, 10 fechas → campeón + cupos Libertadores
+//     - Cuadrangular internacional: puestos 7-10, 6 fechas → cupo Sudamericana
+//     - Hexagonal por el descenso: puestos 11-16, 10 fechas → 2 descienden
+//   Por ahora solo está activa la Fase Regular — la lógica de Fase Final se
+//   agrega cuando se acerque la fecha 30.
+//
+// IMPORTANTE sobre el calendario: LigaPro solo publica 2 fechas por adelantado
+// (no existe el calendario completo de la temporada de una vez). Por eso
+// LIGA_FIXTURES se actualiza a mano cada semana con las fechas que la liga
+// vaya confirmando — este es el "chequeo semanal" que hablamos.
 
 const LIGA_TEAMS = [
   "Independiente del Valle","Deportivo Cuenca","U. Católica","Barcelona SC",
@@ -3707,8 +3712,6 @@ const LIGA_TEAMS = [
 ];
 
 // pj/pts/gf/ga = acumulado real a la Fecha 16 (2026) · titles = títulos históricos de Serie A
-// NOTA: los títulos son aproximados de memoria — verificar y corregir si hace falta,
-// solo pesan 20% de la fórmula así que un ajuste no cambia demasiado el resultado.
 const LIGA_TD = {
   "Independiente del Valle": {pj:16, pts:37, gf:32, ga:18, titles:3},
   "Deportivo Cuenca":        {pj:16, pts:27, gf:18, ga:17, titles:2},
@@ -3728,8 +3731,6 @@ const LIGA_TD = {
   "Manta FC":                {pj:16, pts:12, gf:7,  ga:19, titles:0}
 };
 
-// Índices 1-10 estimados por estilo de juego (misma lógica que el Mundial).
-// Igual que allá: es la parte más "blanda" del modelo — ajustar con la vista.
 const LIGA_CORNER_IDX = {
   "Independiente del Valle":7.5, "Barcelona SC":6.5, "Emelec":6.0, "LDU Quito":6.8,
   "Deportivo Cuenca":5.5, "U. Católica":6.2, "Aucas":5.5, "Orense SC":6.5,
@@ -3743,24 +3744,47 @@ const LIGA_CARD_IDX = {
   "Leones FC":6.0, "Libertad":6.5, "Delfín":5.8, "Manta FC":6.0
 };
 
-let LIGA_STR = {};
-let LIGA_RR = {}; // resultados NUEVOS ingresados a mano desde la Fecha 17 en adelante
+// ── CALENDARIO (se actualiza a mano cada semana con lo que la liga confirme) ─
+const LIGA_FIXTURES = {
+  "Fecha 17": [
+    {ta:"Independiente del Valle", tb:"Manta FC",             date:"2026-07-03"},
+    {ta:"Libertad",                tb:"Leones FC",             date:"2026-07-04"},
+    {ta:"Barcelona SC",            tb:"Deportivo Cuenca",      date:"2026-07-04"},
+    {ta:"Macará",                  tb:"LDU Quito",             date:"2026-07-05"},
+    {ta:"Delfín",                  tb:"Emelec",                date:"2026-07-05"},
+    {ta:"U. Católica",             tb:"Mushuc Runa",           date:"2026-07-06"},
+    {ta:"Orense SC",               tb:"Técnico Universitario", date:"2026-07-06"},
+    {ta:"Aucas",                   tb:"Guayaquil City",        date:"2026-07-07"}
+  ],
+  "Fecha 18": [
+    {ta:"Leones FC",       tb:"U. Católica",             date:"2026-07-10"},
+    {ta:"Técnico Universitario", tb:"Macará",             date:"2026-07-10"},
+    {ta:"Manta FC",        tb:"Orense SC",                date:"2026-07-11"},
+    {ta:"Mushuc Runa",     tb:"Independiente del Valle",  date:"2026-07-11"},
+    {ta:"Guayaquil City",  tb:"Delfín",                   date:"2026-07-11"},
+    {ta:"LDU Quito",       tb:"Libertad",                 date:"2026-07-12"},
+    {ta:"Deportivo Cuenca",tb:"Aucas",                    date:"2026-07-12"},
+    {ta:"Emelec",          tb:"Barcelona SC",             date:"2026-07-12"}
+  ]
+};
 
-function norm(v, lo, hi){ return Math.max(0, Math.min(1, (v-lo)/(hi-lo))); }
+let LIGA_STR = {};
+let LIGA_RR = {}; // resultados ingresados a mano, clave "equipoA|equipoB"
+let LIGA_PD = []; // lista de partidos con análisis (equivalente a PD del Mundial)
+
+function ligaNorm(v, lo, hi){ return Math.max(0, Math.min(1, (v-lo)/(hi-lo))); }
 
 function ligaInitStr(){
   for(const[n,d] of Object.entries(LIGA_TD)){
     const ppg = d.pts/d.pj;
     const gdpg = (d.gf-d.ga)/d.pj;
-    const prestige = Math.min(d.titles*0.01, 0.15); // tope 15%, igual de acotado que en el Mundial
+    const prestige = Math.min(d.titles*0.01, 0.15);
     LIGA_STR[n] = Math.max(0.05, Math.min(0.98,
-      0.50*norm(ppg,0,3) + 0.30*norm(gdpg,-2,2) + 0.20*(prestige/0.15)*0.20
+      0.50*ligaNorm(ppg,0,3) + 0.30*ligaNorm(gdpg,-2,2) + 0.20*(prestige/0.15)*0.20
     ));
   }
 }
 
-// Actualización Bayesiana con los resultados NUEVOS ingresados a mano
-// (misma lógica que bayesUpd() del Mundial, aplicada a LIGA_RR)
 function ligaBayesUpd(){
   const u={...LIGA_STR}, ts={};
   for(const[k,r] of Object.entries(LIGA_RR)){
@@ -3777,16 +3801,12 @@ function ligaBayesUpd(){
   for(const[n,s] of Object.entries(ts)){
     if(!s.played) continue;
     const perf = 0.60*(s.pts/s.played/3) + 0.40*Math.max(0,Math.min(1,((s.gf-s.ga)/s.played+3)/6));
-    const w = Math.min(0.20*s.played, 0.50); // un poco más conservador que el Mundial:
-                                              // la temporada de club ya trae 16 partidos de historial,
-                                              // así que cada partido nuevo pesa menos individualmente
+    const w = Math.min(0.20*s.played, 0.50);
     u[n] = Math.max(0.05, Math.min(0.98, (1-w)*LIGA_STR[n] + w*perf));
   }
   return u;
 }
 
-// xG, matchAnal, corners y tarjetas reusan la MISMA matemática del Mundial
-// (Poisson + Dixon-Coles vía pPmf/dcF/ap, ya definidas arriba en este archivo)
 function ligaXgCalc(ta, tb, u){
   const sa = u[ta] ?? LIGA_STR[ta], sb = u[tb] ?? LIGA_STR[tb];
   const da = LIGA_TD[ta], db = LIGA_TD[tb], af = ap(sa, sb);
@@ -3796,26 +3816,32 @@ function ligaXgCalc(ta, tb, u){
   return [la, lb];
 }
 
-function ligaMatchAnal(ta, tb){
-  const u = ligaBayesUpd();
+function ligaMatchAnal(ta, tb, u){
   const [la, lb] = ligaXgCalc(ta, tb, u);
-  let wa=0, wd=0, wb=0, p_over25=0, p_under25=0, p_btts=0, p_no_btts=0;
+  let wa=0, wd=0, wb=0, p_over25=0, p_under25=0, p_btts=0, p_no_btts=0, p_over15=0, p_over35=0;
   for(let i=0;i<10;i++) for(let j=0;j<10;j++){
     const p = pPmf(i,la)*pPmf(j,lb)*dcF(i,j,la,lb);
     if(i>j) wa+=p; else if(i===j) wd+=p; else wb+=p;
-    if(i+j>2.5) p_over25+=p; else p_under25+=p;
+    const total=i+j;
+    if(total>2.5) p_over25+=p; else p_under25+=p;
+    if(total>1.5) p_over15+=p;
+    if(total>3.5) p_over35+=p;
     if(i>=1&&j>=1) p_btts+=p; else p_no_btts+=p;
   }
   const tot=wa+wd+wb, matSum=p_over25+p_under25, bttsSum=p_btts+p_no_btts;
   const totalLambda=la+lb, p_no_goal=Math.exp(-totalLambda);
   return {
     la:+la.toFixed(2), lb:+lb.toFixed(2), xg_total:+(la+lb).toFixed(2),
-    pw_a:+(wa/tot*100).toFixed(1), pd:+(wd/tot*100).toFixed(1), pw_b:+(wb/tot*100).toFixed(1),
-    p_over25:+(p_over25/matSum*100).toFixed(1), p_under25:+(p_under25/matSum*100).toFixed(1),
-    p_btts:+(p_btts/bttsSum*100).toFixed(1), p_no_btts:+(p_no_btts/bttsSum*100).toFixed(1),
-    p_a_first:+(la/totalLambda*(1-p_no_goal)*100).toFixed(1),
-    p_b_first:+(lb/totalLambda*(1-p_no_goal)*100).toFixed(1),
-    p_no_goal:+(p_no_goal*100).toFixed(1)
+    xgRA: la>=0.75?Math.round(la):0, xgRB: lb>=0.75?Math.round(lb):0,
+    xgRStr: `${la>=0.75?Math.round(la):0}-${lb>=0.75?Math.round(lb):0}`,
+    pw_a:+(wa/tot).toFixed(3), pd:+(wd/tot).toFixed(3), pw_b:+(wb/tot).toFixed(3),
+    p_over25:+(p_over25/matSum).toFixed(3), p_under25:+(p_under25/matSum).toFixed(3),
+    p_over15:+(p_over15/matSum).toFixed(3), p_over35:+(p_over35/matSum).toFixed(3),
+    p_btts:+(p_btts/bttsSum).toFixed(3), p_no_btts:+(p_no_btts/bttsSum).toFixed(3),
+    p_a_first:+(la/totalLambda*(1-p_no_goal)).toFixed(3),
+    p_b_first:+(lb/totalLambda*(1-p_no_goal)).toFixed(3),
+    p_no_goal:+p_no_goal.toFixed(3),
+    winner: wa>=wb?ta:tb
   };
 }
 
@@ -3833,6 +3859,13 @@ function ligaCardCalc(ta, tb){
   return [+la.toFixed(2), +lb.toFixed(2)];
 }
 
+function ligaGetResult(ta, tb){
+  const k1=ta+'|'+tb, k2=tb+'|'+ta;
+  if(LIGA_RR[k1]&&LIGA_RR[k1][0]!==undefined) return {ga:LIGA_RR[k1][0], gb:LIGA_RR[k1][1]};
+  if(LIGA_RR[k2]&&LIGA_RR[k2][0]!==undefined) return {ga:LIGA_RR[k2][1], gb:LIGA_RR[k2][0]};
+  return null;
+}
+
 // ── TABLA DE POSICIONES (base + resultados nuevos ingresados a mano) ───────
 function ligaCalcStandings(){
   const rows = LIGA_TEAMS.map(n=>{
@@ -3840,8 +3873,10 @@ function ligaCalcStandings(){
     return {name:n, pj:base.pj, pts:base.pts, gf:base.gf, ga:base.ga};
   });
   const byName = Object.fromEntries(rows.map(r=>[r.name,r]));
+  const seen = new Set();
   for(const[k,r] of Object.entries(LIGA_RR)){
     if(r[0]===undefined||r[1]===undefined) continue;
+    if(seen.has(k)) continue; seen.add(k);
     const[ta,tb]=k.split('|'); const ga=r[0], gb=r[1];
     if(!byName[ta]||!byName[tb]) continue;
     byName[ta].pj++; byName[tb].pj++;
@@ -3859,117 +3894,267 @@ function ligaRenderStandings(){
   if(!cont) return;
   const rows = ligaCalcStandings();
   let html = `<div style="background:#e8f4fd;border:1px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:1rem;font-size:12px;color:#1565c0">
-    📊 Tabla de posiciones — LigaPro Serie A 2026 (Fase Inicial)
+    📊 Tabla de posiciones — LigaPro Serie A 2026 (Fase Regular)
   </div>`;
   html += `<table class="gtbl" style="width:100%"><thead><tr>
     <th style="width:20px">#</th><th>Equipo</th><th class="r">PJ</th><th class="r">Pts</th>
     <th class="r">GF</th><th class="r">GA</th><th class="r">DG</th></tr></thead><tbody>`;
   rows.forEach((r,i)=>{
     const dg = r.gf-r.ga;
-    const cls = i<4?'q1':(i>=rows.length-2?'':'');
+    let badge = '';
+    if(i<6) badge = '<span style="font-size:9px;background:#d4edda;color:#1a5e34;border-radius:3px;padding:1px 5px;margin-left:5px">Hexagonal título</span>';
+    else if(i<10) badge = '<span style="font-size:9px;background:#e8f4fd;color:#1565c0;border-radius:3px;padding:1px 5px;margin-left:5px">Cuadrangular</span>';
+    else badge = '<span style="font-size:9px;background:#fde8e8;color:#c00;border-radius:3px;padding:1px 5px;margin-left:5px">Hexagonal descenso</span>';
     html += `<tr>
-      <td style="font-weight:600;color:${i<4?'#1a5e34':(i>=rows.length-2?'#c00':'#333')}">${i+1}</td>
-      <td style="font-weight:500;cursor:pointer" onclick="ligaOpenTeamProfile('${r.name}')">${r.name}</td>
+      <td style="font-weight:600;color:${i<6?'#1a5e34':(i>=10?'#c00':'#1565c0')}">${i+1}</td>
+      <td style="font-weight:500;cursor:pointer" onclick="ligaOpenTeamProfile('${r.name}')">${r.name}${badge}</td>
       <td class="r">${r.pj}</td><td class="r"><strong>${r.pts}</strong></td>
       <td class="r">${r.gf}</td><td class="r">${r.ga}</td>
       <td class="r">${dg>0?'+':''}${dg}</td>
     </tr>`;
   });
   html += `</tbody></table>
-  <p style="font-size:11px;color:#999;margin-top:8px">🟢 Zona Copa Libertadores (top 4) · 🔴 Zona de descenso · Tabla se actualiza con cada resultado ingresado en la pestaña Resultados</p>`;
+  <p style="font-size:11px;color:#999;margin-top:8px">🟢 Hexagonal por el título (1-6) · 🔵 Cuadrangular internacional (7-10) · 🔴 Hexagonal por el descenso (11-16)<br>
+  Los puntos de esta fase se mantienen íntegros al pasar a la Fase Final.</p>`;
   cont.innerHTML = html;
-}
-
-// ── PREDICTOR DE PARTIDOS (elige 2 equipos, calcula al instante) ───────────
-function ligaRenderPredictor(){
-  const cont = document.getElementById('pcont');
-  if(!cont) return;
-  const options = LIGA_TEAMS.map(t=>`<option value="${t}">${t}</option>`).join('');
-  cont.innerHTML = `
-    <div style="background:#f9f9f9;border-radius:10px;padding:16px">
-      <div style="font-size:12px;color:#888;margin-bottom:10px">Elige dos equipos para ver la predicción del modelo</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <select id="liga-pred-a" style="flex:1;min-width:140px;padding:9px;border-radius:8px;border:1px solid #ddd;font-family:inherit">${options}</select>
-        <span style="font-weight:700;color:#888">vs</span>
-        <select id="liga-pred-b" style="flex:1;min-width:140px;padding:9px;border-radius:8px;border:1px solid #ddd;font-family:inherit">${options}</select>
-        <button onclick="ligaShowPrediction()" style="padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500">Predecir →</button>
-      </div>
-      <div id="liga-pred-result" style="margin-top:16px"></div>
-    </div>`;
-  document.getElementById('liga-pred-b').selectedIndex = 1;
-}
-
-function ligaShowPrediction(){
-  const ta = document.getElementById('liga-pred-a').value;
-  const tb = document.getElementById('liga-pred-b').value;
-  const box = document.getElementById('liga-pred-result');
-  if(ta===tb){ box.innerHTML = '<p style="color:#c00;font-size:12px">Elige dos equipos distintos.</p>'; return; }
-  const a = ligaMatchAnal(ta, tb);
-  const [ca,cb] = ligaCornerCalc(ta,tb);
-  const [tla,tlb] = ligaCardCalc(ta,tb);
-  const maxP = Math.max(a.pw_a, a.pd, a.pw_b);
-  box.innerHTML = `
-    <div style="border-top:1px solid #e0e0e0;padding-top:14px">
-      <div class="probs-row" style="margin-bottom:10px">
-        <div class="pbox${a.pw_a===maxP?' hi':''}"><div class="pv">${a.pw_a}%</div><div class="pl">Gana ${ta.split(' ')[0]}</div></div>
-        <div class="pbox${a.pd===maxP?' hi':''}"><div class="pv">${a.pd}%</div><div class="pl">Empate</div></div>
-        <div class="pbox${a.pw_b===maxP?' hi':''}"><div class="pv">${a.pw_b}%</div><div class="pl">Gana ${tb.split(' ')[0]}</div></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:11px">
-        <div class="pbox"><div class="pv" style="font-size:14px">${a.la}-${a.lb}</div><div class="pl">xG</div></div>
-        <div class="pbox"><div class="pv" style="font-size:14px">${a.p_over25}%</div><div class="pl">Over 2.5</div></div>
-        <div class="pbox"><div class="pv" style="font-size:14px">${a.p_btts}%</div><div class="pl">BTTS</div></div>
-        <div class="pbox"><div class="pv" style="font-size:14px">${(+ca+ +cb).toFixed(1)}</div><div class="pl">Corners esp.</div></div>
-      </div>
-      <div style="font-size:10px;color:#aaa;margin-top:8px">Corners: ${ta.split(' ')[0]} ${ca} - ${cb} ${tb.split(' ')[0]} · Tarjetas: ${tla} - ${tlb}</div>
-    </div>`;
 }
 
 function ligaOpenTeamProfile(name){
   alert(name + '\n\nPerfil detallado — próximamente en una siguiente iteración.');
 }
 
-// ── ENTRADA MANUAL DE RESULTADOS (Resultados, solo admin) ──────────────────
+// ── CONSTRUIR LISTA DE PARTIDOS CON ANÁLISIS (equivalente a buildPD) ───────
+function ligaBuildPD(){
+  const u = ligaBayesUpd();
+  const data = [];
+  for(const[fecha, matches] of Object.entries(LIGA_FIXTURES)){
+    matches.forEach(m=>{
+      const a = ligaMatchAnal(m.ta, m.tb, u);
+      const real = ligaGetResult(m.ta, m.tb);
+      data.push({
+        fecha, date:m.date, ta:m.ta, tb:m.tb, ...a,
+        played: !!real, real: real?[real.ga,real.gb]:null
+      });
+    });
+  }
+  LIGA_PD = data;
+  return data;
+}
+
+// ── TARJETA DE PARTIDO (mismo formato visual que el Mundial) ───────────────
+function ligaRenderPCard(m){
+  const maxP = Math.max(m.pw_a, m.pd, m.pw_b);
+  const hiA = m.pw_a===maxP, hiD = m.pd===maxP&&!hiA, hiB = m.pw_b===maxP&&!hiA&&!hiD;
+  const wA = m.played && m.real[0]>m.real[1];
+  const wB = m.played && m.real[1]>m.real[0];
+  const scoreMain = m.played ? `<span style="color:#1a5e34">${m.real[0]}-${m.real[1]}</span>` : m.xgRStr;
+  const scoreLbl = m.played ? 'real' : 'xG rond.';
+  const modalKey = (m.ta+'|'+m.tb).replace(/['"]/g,'');
+  const dateLabel = new Date(m.date+'T00:00:00').toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
+
+  return `<div class="pcard${m.played?' played-card':''}">
+    <div class="pcard-hdr">
+      <span>${m.fecha} · ${dateLabel}</span>
+      <span>${m.played?'✅ Jugado':'⏳ Pendiente'}</span>
+    </div>
+    <div class="pcard-body">
+      <div class="teams-row">
+        <div class="team-a-n${wA?' fav':''}" style="cursor:pointer" onclick="ligaOpenTeamProfile('${m.ta}')">${m.ta}</div>
+        <div class="sbox${wA||wB?' fs':''}">${scoreMain}<span class="slbl">${scoreLbl}</span></div>
+        <div class="team-b-n${wB?' fav':''}" style="cursor:pointer" onclick="ligaOpenTeamProfile('${m.tb}')">${m.tb}</div>
+      </div>
+      <div class="probs-row">
+        <div class="pbox${hiA?' hi':''}"><div class="pv">${(m.pw_a*100).toFixed(0)}%</div><div class="pl">Gana ${m.ta.split(' ')[0]}</div></div>
+        <div class="pbox${hiD?' hi':''}"><div class="pv">${(m.pd*100).toFixed(0)}%</div><div class="pl">Empate</div></div>
+        <div class="pbox${hiB?' hi':''}"><div class="pv">${(m.pw_b*100).toFixed(0)}%</div><div class="pl">Gana ${m.tb.split(' ')[0]}</div></div>
+      </div>
+      ${IS_PREMIUM ? `<div class="quick-strip">
+        <div class="qs-xg-pill">
+          <div class="qs-xg-team"><span class="qs-xg-name">${m.ta.split(' ')[0]}</span><span class="qs-xg-num">${m.la}</span></div>
+          <div class="qs-xg-mid"><span class="qs-xg-label">xG</span><span class="qs-xg-total-val">Total ${m.xg_total}</span></div>
+          <div class="qs-xg-team qs-xg-team-r"><span class="qs-xg-name">${m.tb.split(' ')[0]}</span><span class="qs-xg-num">${m.lb}</span></div>
+        </div>
+        <div class="qs-pills-row">
+          <div class="qs-pill ${m.p_over25>=0.5?'qs-pill-blue':'qs-pill-gray'}"><span class="qs-pill-lbl">O2.5</span><span class="qs-pill-val">${(m.p_over25*100).toFixed(0)}%</span></div>
+          <div class="qs-pill qs-pill-gray"><span class="qs-pill-lbl">U2.5</span><span class="qs-pill-val">${(m.p_under25*100).toFixed(0)}%</span></div>
+          <div class="qs-pill ${m.p_btts>=0.5?'qs-pill-green':'qs-pill-gray'}"><span class="qs-pill-lbl">BTTS</span><span class="qs-pill-val">${(m.p_btts*100).toFixed(0)}%</span></div>
+          <div class="qs-pill ${m.p_over15>=0.7?'qs-pill-blue':'qs-pill-gray'}"><span class="qs-pill-lbl">O1.5</span><span class="qs-pill-val">${(m.p_over15*100).toFixed(0)}%</span></div>
+        </div>
+      </div>` : `<div style="margin:8px 0;padding:10px 12px;background:#f9f9f9;border-radius:8px;border:1px dashed #ddd;display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="font-size:11px;color:#888">🔐 <strong style="color:#111">xG · O/U · BTTS · Corners · Tarjetas</strong> disponibles en Premium</div>
+        <button onclick="showPremiumModal()" style="padding:5px 10px;background:#111;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;font-weight:500">Ver más →</button>
+      </div>`}
+      <button class="expand-btn" onclick="${IS_PREMIUM ? `ligaOpenMatchModal('${modalKey}')` : 'showPremiumModal()'}">
+        <span class="expand-label">${IS_PREMIUM ? 'Ver análisis completo' : '🔐 Desbloquear análisis completo'}</span>
+        <span class="expand-icon">↗</span>
+      </button>
+    </div>
+  </div>`;
+}
+
+function ligaRenderPartidos(){
+  const cont = document.getElementById('pcont');
+  if(!cont) return;
+  ligaBuildPD();
+  window._LIGA_PCARDS = {};
+  LIGA_PD.forEach(m=>{ window._LIGA_PCARDS[m.ta+'|'+m.tb] = m; });
+
+  let html = '';
+  let lastFecha = '';
+  LIGA_PD.forEach(m=>{
+    if(m.fecha !== lastFecha){ lastFecha = m.fecha; html += `<p class="slabel">${m.fecha}</p><div class="pmgrid">`; }
+    html += ligaRenderPCard(m);
+  });
+  if(lastFecha) html += '</div>';
+  html += `<p style="font-size:11px;color:#999;margin-top:1rem">Calendario cargado: ${Object.keys(LIGA_FIXTURES).join(', ')} · se amplía cada semana cuando LigaPro confirme más fechas</p>`;
+  cont.innerHTML = html;
+}
+
+// ── MODAL DE ANÁLISIS COMPLETO (mismo formato que el Mundial, simplificado) ─
+function ligaOpenMatchModal(key){
+  const m = window._LIGA_PCARDS[key];
+  if(!m) return;
+  const existing = document.getElementById('liga-match-modal');
+  if(existing) existing.remove();
+
+  const [ca, cb] = ligaCornerCalc(m.ta, m.tb);
+  const cTotal = +(ca+cb).toFixed(2);
+  const [tla, tlb] = ligaCardCalc(m.ta, m.tb);
+  const tTotal = +(tla+tlb).toFixed(2);
+  const maxP = Math.max(m.pw_a, m.pd, m.pw_b);
+
+  const scores=[];
+  for(let i=0;i<8;i++) for(let j=0;j<8;j++) scores.push({s:i+'-'+j, p:pPmf(i,m.la)*pPmf(j,m.lb)*dcF(i,j,m.la,m.lb)});
+  scores.sort((a,b)=>b.p-a.p);
+  const top5 = scores.slice(0,5);
+  const top5sum = top5.reduce((s,x)=>s+x.p,0);
+
+  const html = `<div class="modal-box">
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-title">${m.ta} vs ${m.tb}</div>
+        <div class="modal-sub">${m.fecha} · ${m.played?'Jugado':'Pendiente'}</div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('liga-match-modal').remove()">&#x2715;</button>
+    </div>
+
+    <div class="modal-section" style="border-bottom:1px solid #f0f0f0">
+      <div class="modal-sec-title">Probabilidades de victoria</div>
+      <div class="probs-row">
+        <div class="pbox${m.pw_a===maxP?' hi':''}"><div class="pv">${Math.round(m.pw_a*100)}%</div><div class="pl">Gana ${m.ta.split(' ')[0]}</div></div>
+        <div class="pbox${m.pd===maxP&&m.pw_a!==maxP?' hi':''}"><div class="pv">${Math.round(m.pd*100)}%</div><div class="pl">Empate</div></div>
+        <div class="pbox${m.pw_b===maxP&&m.pw_a!==maxP&&m.pd!==maxP?' hi':''}"><div class="pv">${Math.round(m.pw_b*100)}%</div><div class="pl">Gana ${m.tb.split(' ')[0]}</div></div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-sec-title">Expected Goals (xG)</div>
+      <div class="xgs">
+        <div class="xgrow"><div class="xgra">${m.xgRA}</div><div class="xglbl">xG redondeado</div><div class="xgrb">${m.xgRB}</div></div>
+        <hr class="xgdiv">
+        <div class="xgrow"><div class="xgva">${m.la}</div><div class="xglbl">xG exacto · total ${m.xg_total}</div><div class="xgvb">${m.lb}</div></div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-sec-title">Top 5 resultados más probables</div>
+      <div class="top5-grid">
+        ${top5.map((s,i)=>`<div class="top5-item${i===0?' top5-first':''}">
+          <div class="top5-score">${s.s}</div>
+          <div class="top5-bar-wrap"><div class="top5-bar" style="width:${Math.round(s.p/top5[0].p*100)}%"></div></div>
+          <div class="top5-pct">${(s.p*100).toFixed(1)}%</div>
+        </div>`).join('')}
+        <div class="top5-note">Otros resultados: ${((1-top5sum)*100).toFixed(0)}% de probabilidad combinada</div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-sec-title">Over / Under — Partido completo</div>
+      <div class="ou-btts"><div class="ou-row">
+        <div class="ou-item${m.p_over15>=0.7?' ou-hi':''}"><div class="ou-val">${Math.round(m.p_over15*100)}%</div><div class="ou-lbl">Over 1.5</div></div>
+        <div class="ou-item${m.p_over25>=0.5?' ou-hi':''}"><div class="ou-val">${Math.round(m.p_over25*100)}%</div><div class="ou-lbl">Over 2.5</div></div>
+        <div class="ou-item${m.p_over35>=0.4?' ou-hi':''}"><div class="ou-val">${Math.round(m.p_over35*100)}%</div><div class="ou-lbl">Over 3.5</div></div>
+        <div class="ou-item${m.p_under25>0.5?' ou-hi':''}"><div class="ou-val">${Math.round(m.p_under25*100)}%</div><div class="ou-lbl">Under 2.5</div></div>
+      </div></div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-sec-title">BTTS — Ambos equipos marcan</div>
+      <div class="ou-btts"><div class="ou-row">
+        <div class="ou-item${m.p_btts>=0.5?' btts-hi':''}"><div class="ou-val">${Math.round(m.p_btts*100)}%</div><div class="ou-lbl">BTTS ✅</div></div>
+        <div class="ou-item${m.p_no_btts>0.5?' btts-no-hi':''}"><div class="ou-val">${Math.round(m.p_no_btts*100)}%</div><div class="ou-lbl">No BTTS ❌</div></div>
+      </div></div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-sec-title">📐 Corners esperados</div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:#f5f5f5;border-radius:10px;padding:12px 14px">
+        <div style="text-align:right"><div style="font-size:20px;font-weight:700">${ca}</div><div style="font-size:10px;color:#888">${m.ta.split(' ')[0]}</div></div>
+        <div style="text-align:center"><div style="font-size:9px;color:#aaa;text-transform:uppercase">Total</div><div style="font-size:22px;font-weight:700">${cTotal}</div></div>
+        <div style="text-align:left"><div style="font-size:20px;font-weight:700">${cb}</div><div style="font-size:10px;color:#888">${m.tb.split(' ')[0]}</div></div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-sec-title">🟨 Tarjetas esperadas</div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:#f5f5f5;border-radius:10px;padding:12px 14px">
+        <div style="text-align:right"><div style="font-size:20px;font-weight:700">${tla}</div><div style="font-size:10px;color:#888">${m.ta.split(' ')[0]}</div></div>
+        <div style="text-align:center"><div style="font-size:9px;color:#aaa;text-transform:uppercase">Total</div><div style="font-size:22px;font-weight:700">${tTotal}</div></div>
+        <div style="text-align:left"><div style="font-size:20px;font-weight:700">${tlb}</div><div style="font-size:10px;color:#888">${m.tb.split(' ')[0]}</div></div>
+      </div>
+      <div style="font-size:10px;color:#aaa;margin-top:8px;font-style:italic">* Corners y tarjetas estimados por índice de estilo de juego — igual que en el Mundial, es la parte más subjetiva del modelo.</div>
+    </div>
+  </div>`;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'liga-match-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto';
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
+  overlay.innerHTML = html;
+  document.body.appendChild(overlay);
+}
+
+// ── ENTRADA MANUAL DE RESULTADOS — organizada por fecha ────────────────────
+function ligaSetResult(ta, tb, idx, val){
+  const key = ta+'|'+tb;
+  const v = parseInt(val);
+  if(!LIGA_RR[key]) LIGA_RR[key] = [undefined, undefined];
+  if(isNaN(v)||val===''){ LIGA_RR[key][idx] = undefined; return; }
+  LIGA_RR[key][idx] = v;
+  if(LIGA_RR[key][0]!==undefined && LIGA_RR[key][1]!==undefined){
+    saveToSupabase('LIGA_'+key, LIGA_RR[key][0], LIGA_RR[key][1], 'ligapro');
+    ligaRenderAdminInput();
+    ligaRenderStandings();
+    ligaRenderPartidos();
+  }
+}
+
 function ligaRenderAdminInput(){
   const cont = document.getElementById('mcont');
   if(!cont) return;
-  const options = LIGA_TEAMS.map(t=>`<option value="${t}">${t}</option>`).join('');
-  let entered = Object.entries(LIGA_RR).map(([k,r])=>{
-    const[ta,tb]=k.split('|');
-    return `<div class="mrow played"><span class="ta wt">${ta}</span><span class="sinp">${r[0]}</span><span class="sep">:</span><span class="sinp">${r[1]}</span><span class="tb">${tb}</span></div>`;
-  }).join('');
-  cont.innerHTML = `
-    <div style="background:#fffbea;border:1.5px solid #f5c518;border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:#856404">
-      💡 LigaPro no tiene sincronización automática — ingresa cada resultado de la fecha a mano aquí.
-    </div>
-    <div style="background:#f9f9f9;border-radius:10px;padding:16px;margin-bottom:1rem">
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <select id="liga-res-a" style="flex:1;min-width:140px;padding:9px;border-radius:8px;border:1px solid #ddd;font-family:inherit">${options}</select>
-        <input id="liga-res-ga" type="number" min="0" max="15" placeholder="-" style="width:50px;padding:9px;text-align:center;border-radius:8px;border:1px solid #ddd;font-family:inherit">
-        <span>-</span>
-        <input id="liga-res-gb" type="number" min="0" max="15" placeholder="-" style="width:50px;padding:9px;text-align:center;border-radius:8px;border:1px solid #ddd;font-family:inherit">
-        <select id="liga-res-b" style="flex:1;min-width:140px;padding:9px;border-radius:8px;border:1px solid #ddd;font-family:inherit">${options}</select>
-        <button onclick="ligaAddResult()" style="padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500">Guardar</button>
-      </div>
-    </div>
-    <p class="slabel">Resultados ingresados esta temporada (desde Fecha 17)</p>
-    <div class="rgrid">${entered || '<p style="font-size:12px;color:#999">Aún no has ingresado resultados nuevos.</p>'}</div>
-  `;
-  document.getElementById('liga-res-b').selectedIndex = 1;
-}
+  let html = `<div style="background:#fffbea;border:1.5px solid #f5c518;border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:#856404">
+    💡 LigaPro no tiene sincronización automática — el calendario se actualiza a mano cada semana, e ingresa cada resultado apenas se juegue.
+  </div>`;
 
-function ligaAddResult(){
-  const ta = document.getElementById('liga-res-a').value;
-  const tb = document.getElementById('liga-res-b').value;
-  const ga = parseInt(document.getElementById('liga-res-ga').value);
-  const gb = parseInt(document.getElementById('liga-res-gb').value);
-  if(ta===tb){ alert('Elige dos equipos distintos.'); return; }
-  if(isNaN(ga)||isNaN(gb)){ alert('Ingresa el marcador completo.'); return; }
-  LIGA_RR[ta+'|'+tb] = [ga, gb];
-  // Guardar en Supabase con prefijo LIGA_ para no mezclar con datos del Mundial
-  saveToSupabase('LIGA_'+ta+'|'+tb, ga, gb, 'ligapro');
-  ligaRenderAdminInput();
-  ligaRenderStandings();
+  for(const [fecha, matches] of Object.entries(LIGA_FIXTURES)){
+    const playedCount = matches.filter(m=>ligaGetResult(m.ta,m.tb)).length;
+    html += `<p class="slabel">${fecha} <span style="font-size:10px;color:#aaa;font-weight:400;text-transform:none">· ${playedCount}/${matches.length} jugados</span></p><div class="rgrid">`;
+    matches.forEach(m=>{
+      const real = ligaGetResult(m.ta, m.tb);
+      const pl = !!real;
+      const dateLabel = new Date(m.date+'T00:00:00').toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
+      html += `<div class="mrow${pl?' played':''}">
+        <span class="ta${pl&&real.ga>real.gb?' wt':''}" style="font-size:12px">${m.ta}</span>
+        <input class="sinp" type="number" min="0" max="15" value="${pl?real.ga:''}" placeholder="-" onchange="ligaSetResult('${m.ta}','${m.tb}',0,this.value)">
+        <span class="sep">:</span>
+        <input class="sinp" type="number" min="0" max="15" value="${pl?real.gb:''}" placeholder="-" onchange="ligaSetResult('${m.ta}','${m.tb}',1,this.value)">
+        <span class="tb${pl&&real.gb>real.ga?' wt':''}" style="font-size:12px">${m.tb}</span>
+        <span style="font-size:9px;color:#999;grid-column:1/-1;text-align:center;margin-top:-2px">${dateLabel}</span>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  cont.innerHTML = html;
 }
 
 async function ligaLoadFromSupabase(){
@@ -3989,19 +4174,18 @@ async function ligaInitApp(){
   ligaInitStr();
   await ligaLoadFromSupabase();
   ligaRenderStandings();
-  ligaRenderPredictor();
+  ligaRenderPartidos();
   if(IS_ADMIN) ligaRenderAdminInput();
 
-  // Ocultar/adaptar tabs que no aplican todavía para esta liga
   document.querySelectorAll('.tab').forEach(t=>{
     if(t.textContent.includes('Bracket')) t.style.display='none';
-    if(t.textContent.includes('Grupos')) t.innerHTML='📊 Tabla';
-    if(t.textContent.includes('Partidos')) t.innerHTML='🔮 Predecir';
+    if(t.textContent.includes('Grupos')||t.innerHTML.includes('📊 Tabla')) t.innerHTML='📊 Tabla';
+    if(t.textContent.includes('Partidos')||t.innerHTML.includes('🔮')) t.innerHTML='📅 Partidos';
   });
   const panelRanking = document.getElementById('panel-ranking');
   const panelTracker = document.getElementById('panel-tracker');
-  if(panelRanking) panelRanking.innerHTML = '<div class="infobox">Probabilidades de campeón, Libertadores y descenso — disponible cuando carguemos el calendario completo de fechas restantes.</div>';
+  if(panelRanking) panelRanking.innerHTML = '<div class="infobox">Probabilidades de título, Libertadores, Sudamericana y descenso — disponible cuando se acerque la Fase Final (fecha 30).</div>';
   if(panelTracker) panelTracker.innerHTML = '<div class="infobox">Tracker de aciertos — disponible después de que se jueguen las primeras fechas con resultados ingresados.</div>';
 
-  document.getElementById('hdr-sub').innerHTML = '✅ Datos cargados · Ingresa resultados en la pestaña Resultados a medida que se jueguen las fechas';
+  document.getElementById('hdr-sub').innerHTML = '✅ Datos cargados · Fase Regular · Calendario: ' + Object.keys(LIGA_FIXTURES).join(', ');
 }
