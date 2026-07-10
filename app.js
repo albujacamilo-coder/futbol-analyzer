@@ -3977,10 +3977,18 @@ function ligaRenderPCard(m){
   const modalKey = (m.ta+'|'+m.tb).replace(/['"]/g,'');
   const dateLabel = new Date(m.date+'T00:00:00').toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
 
+  // ── Detector de sorpresas (misma lógica que el Mundial) ──
+  const favWinP = Math.max(m.pw_a, m.pw_b);
+  const undWinP = Math.min(m.pw_a, m.pw_b);
+  const isUpset = !m.played && undWinP >= 0.30 && favWinP < 0.60;
+  const upsetBadge = isUpset
+    ? `<span style="font-size:10px;font-weight:600;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:5px;padding:2px 7px;white-space:nowrap">🚨 Posible sorpresa</span>`
+    : '';
+
   return `<div class="pcard${m.played?' played-card':''}">
     <div class="pcard-hdr">
       <span>${m.fecha} · ${dateLabel}</span>
-      <span>${m.played?'✅ Jugado':'⏳ Pendiente'}</span>
+      <span style="display:flex;align-items:center;gap:5px">${upsetBadge}${m.played?'✅ Jugado':'⏳ Pendiente'}</span>
     </div>
     <div class="pcard-body">
       <div class="teams-row">
@@ -4141,6 +4149,40 @@ function ligaOpenMatchModal(key){
   const maxP = Math.max(m.pw_a, m.pd, m.pw_b);
   const maxFirst = Math.max(m.p_a_first, m.p_b_first);
 
+  // ── Sorpresa: mismo umbral que el Mundial ──
+  const favTeam = m.pw_a>=m.pw_b ? m.ta : m.tb;
+  const undTeam = m.pw_a>=m.pw_b ? m.tb : m.ta;
+  const favP = Math.max(m.pw_a, m.pw_b), undP = Math.min(m.pw_a, m.pw_b);
+  const isUpset = !m.played && undP>=0.30 && favP<0.60;
+
+  function ligaUpsetReasons(){
+    const reasons = [];
+    const strA = LIGA_STR[m.ta]||0.5, strB = LIGA_STR[m.tb]||0.5;
+    if(Math.abs(strA-strB) < 0.08) reasons.push({icon:'⚖️', txt:'Los dos equipos tienen un nivel muy similar según su rendimiento en la temporada — ninguno domina claramente al otro.'});
+    const undStr = LIGA_STR[undTeam]||0.5;
+    if(undStr > 0.45) reasons.push({icon:'🔥', txt: undTeam+' viene con buena forma esta temporada — no es un rival tan fácil como sugiere ser el menos favorito.'});
+    if(m.pd >= 0.27) reasons.push({icon:'🤝', txt:'Hay una probabilidad alta de empate ('+Math.round(m.pd*100)+'%) — el partido puede decidirse por detalles.'});
+    if(Math.abs(m.la-m.lb) < 0.4) reasons.push({icon:'📊', txt:'Las oportunidades de gol esperadas son casi iguales ('+m.la+' vs '+m.lb+').'});
+    if(!reasons.length) reasons.push({icon:'💡', txt:'El modelo detecta que '+undTeam+' tiene una probabilidad real de ganar, más de lo que sugiere ser el equipo menos favorito.'});
+    return reasons;
+  }
+  const reasons = isUpset ? ligaUpsetReasons() : [];
+  const upsetHtml = isUpset ? `
+    <div class="modal-section">
+      <div style="background:#fef3c7;border:1.5px solid #fcd34d;border-radius:10px;padding:12px 14px">
+        <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">🚨 El modelo detecta una posible sorpresa</div>
+        <div style="font-size:12px;color:#78350f;line-height:1.5"><strong>${undTeam}</strong> tiene un <strong>${Math.round(undP*100)}%</strong> de probabilidad de ganar, frente a <strong>${favTeam}</strong> (${Math.round(favP*100)}%).</div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">¿Por qué puede pasar la sorpresa?</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${reasons.map(r=>`<div style="display:flex;gap:10px;align-items:flex-start;background:#f9f9f9;border-radius:8px;padding:10px">
+          <span style="font-size:18px;flex-shrink:0">${r.icon}</span><span style="font-size:12px;color:#444;line-height:1.5">${r.txt}</span>
+        </div>`).join('')}
+      </div>
+    </div>` : '';
+
   function firstGoalPill(pct, label, isMax){
     const bg = isMax?'#d4edda':'#f0f0f0', col = isMax?'#1a5e34':'#888', bdr = isMax?'1px solid #86efac':'1px solid transparent';
     return `<div style="flex:1;text-align:center;padding:10px 6px;border-radius:10px;background:${bg};border:${bdr}">
@@ -4281,10 +4323,12 @@ function ligaOpenMatchModal(key){
       <button id="liga-mtab-goles" onclick="ligaSwitchModalTab('goles')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid #111;color:#111;font-family:inherit">⚽ Goles</button>
       <button id="liga-mtab-corners" onclick="ligaSwitchModalTab('corners')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit">📐 Corners</button>
       <button id="liga-mtab-tarjetas" onclick="ligaSwitchModalTab('tarjetas')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit">🟨 Tarjetas</button>
+      ${isUpset ? `<button id="liga-mtab-upset" onclick="ligaSwitchModalTab('upset')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;background:#fef9e7;cursor:pointer;border-bottom:2px solid transparent;color:#92400e;font-family:inherit">🚨 Sorpresa</button>` : ''}
     </div>
     <div id="liga-mtab-content-goles">${golesHtml}</div>
     <div id="liga-mtab-content-corners" style="display:none">${cornersHtml}</div>
     <div id="liga-mtab-content-tarjetas" style="display:none">${tarjetasHtml}</div>
+    ${isUpset ? `<div id="liga-mtab-content-upset" style="display:none">${upsetHtml}</div>` : ''}
   </div>`;
 
   const overlay = document.createElement('div');
@@ -4296,7 +4340,7 @@ function ligaOpenMatchModal(key){
 }
 
 function ligaSwitchModalTab(tab){
-  ['goles','corners','tarjetas'].forEach(t=>{
+  ['goles','corners','tarjetas','upset'].forEach(t=>{
     const btn = document.getElementById('liga-mtab-'+t);
     const content = document.getElementById('liga-mtab-content-'+t);
     if(!btn||!content) return;
@@ -4389,7 +4433,9 @@ async function ligaInitApp(){
   if(IS_ADMIN) ligaRenderAdminInput();
 
   document.querySelectorAll('.tab').forEach(t=>{
+    t.style.display=''; // reset por si viene con estado previo
     if(t.textContent.includes('Bracket')) t.style.display='none';
+    if(t.textContent.includes('Resultados') && !IS_ADMIN) t.style.display='none';
     if(t.textContent.includes('Grupos')) t.innerHTML='📊 Tabla';
     if(t.textContent.includes('Partidos')) t.innerHTML='📅 Partidos';
   });
