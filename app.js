@@ -3537,11 +3537,19 @@ function enterCompetition(id){
   document.getElementById('main-app').style.display='block';
   const titleEl=document.getElementById('app-title');
   if(titleEl) titleEl.innerHTML=(COMPETITION_NAMES[id]||id)+' <span id="ubadge" style="display:none" class="ubadge">✓ Actualizado</span>';
-  // Limpiar contenedores compartidos para que nunca se vea contenido de la competición anterior
-  ['pcont','gcont','mcont'].forEach(cid=>{
-    const el=document.getElementById(cid);
-    if(el) el.innerHTML='<div class="infobox">Cargando...</div>';
-  });
+
+  // Mundial y LigaPro tienen contenedores 100% separados — nunca pueden pisarse,
+  // aunque algún proceso en segundo plano tarde en resolver.
+  const mundialIds=['pcont','gcont','mcont'];
+  const ligaIds=['pcont-liga','gcont-liga','mcont-liga'];
+  if(id==='ligapro'){
+    mundialIds.forEach(cid=>{ const el=document.getElementById(cid); if(el) el.style.display='none'; });
+    ligaIds.forEach(cid=>{ const el=document.getElementById(cid); if(el){ el.style.display=''; el.innerHTML='<div class="infobox">Cargando...</div>'; } });
+  } else {
+    ligaIds.forEach(cid=>{ const el=document.getElementById(cid); if(el) el.style.display='none'; });
+    mundialIds.forEach(cid=>{ const el=document.getElementById(cid); if(el){ el.style.display=''; el.innerHTML='<div class="infobox">Cargando...</div>'; } });
+  }
+
   // Inicializar la app para esta competición
   if(id==='ligapro'){ ligaInitApp(); return; }
   initApp();
@@ -3935,7 +3943,7 @@ function ligaCalcStandings(){
 }
 
 function ligaRenderStandings(){
-  const cont = document.getElementById('gcont');
+  const cont = document.getElementById('gcont-liga');
   if(!cont) return;
   const rows = ligaCalcStandings();
   let html = `<div style="background:#e8f4fd;border:1px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:1rem;font-size:12px;color:#1565c0">
@@ -4057,7 +4065,7 @@ function ligaFilterMatches(val){
 }
 
 function ligaRenderPartidos(){
-  const cont = document.getElementById('pcont');
+  const cont = document.getElementById('pcont-liga');
   if(!cont) return;
   ligaBuildPD();
   window._LIGA_PCARDS = {};
@@ -4421,7 +4429,7 @@ function ligaSetResult(ta, tb, idx, val){
 }
 
 function ligaRenderAdminInput(){
-  const cont = document.getElementById('mcont');
+  const cont = document.getElementById('mcont-liga');
   if(!cont) return;
   let html = `<div style="background:#fffbea;border:1.5px solid #f5c518;border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:#856404">
     💡 LigaPro no tiene sincronización automática — el calendario se actualiza a mano cada semana, e ingresa cada resultado apenas se juegue.
