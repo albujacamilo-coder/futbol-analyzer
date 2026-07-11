@@ -4357,12 +4357,45 @@ function ligaSwitchModalTab(tab){
 }
 
 // ── ENTRADA MANUAL DE RESULTADOS — organizada por fecha ────────────────────
+// ── RESPALDO LOCAL (localStorage) — igual que el Mundial ───────────────────
+const LIGA_LS_KEY = 'ligapro_results';
+
+function ligaSaveToStorage(){
+  try{
+    localStorage.setItem(LIGA_LS_KEY, JSON.stringify({ LIGA_RR, savedAt: new Date().toISOString() }));
+    let el = document.getElementById('liga-save-indicator');
+    if(!el){
+      el = document.createElement('span');
+      el.id = 'liga-save-indicator';
+      el.style.cssText = 'font-size:11px;color:#1a5e34;margin-left:8px;transition:opacity .3s';
+      const anchor = document.querySelector('.slabel');
+      if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(el, anchor);
+    }
+    if(el){
+      el.textContent = '💾 Guardado';
+      el.style.opacity = '1';
+      setTimeout(()=>{ el.style.opacity = '0'; }, 2000);
+    }
+  } catch(e){ console.warn('LigaPro: no se pudo guardar en localStorage:', e); }
+}
+
+function ligaLoadFromStorage(){
+  try{
+    const raw = localStorage.getItem(LIGA_LS_KEY);
+    if(!raw) return false;
+    const data = JSON.parse(raw);
+    if(data.LIGA_RR) LIGA_RR = data.LIGA_RR;
+    return true;
+  } catch(e){ return false; }
+}
+
 function ligaSetResult(ta, tb, idx, val){
   const key = ta+'|'+tb;
   const v = parseInt(val);
   if(!LIGA_RR[key]) LIGA_RR[key] = [undefined, undefined];
-  if(isNaN(v)||val===''){ LIGA_RR[key][idx] = undefined; return; }
+  if(isNaN(v)||val===''){ LIGA_RR[key][idx] = undefined; ligaSaveToStorage(); return; }
   LIGA_RR[key][idx] = v;
+  ligaSaveToStorage();  // ← respaldo inmediato, no depende de que Supabase funcione
   if(LIGA_RR[key][0]!==undefined && LIGA_RR[key][1]!==undefined){
     saveToSupabase('LIGA_'+key, LIGA_RR[key][0], LIGA_RR[key][1], 'ligapro');
     ligaRenderAdminInput();
@@ -4431,7 +4464,8 @@ function ligaRefreshModel(){
 // ── INIT ─────────────────────────────────────────────────────────────────
 async function ligaInitApp(){
   ligaInitStr();
-  await ligaLoadFromSupabase();
+  ligaLoadFromStorage();       // ← respaldo local primero (siempre disponible)
+  await ligaLoadFromSupabase(); // luego intenta la nube (si Supabase falla, ya tienes el local)
   ligaRenderStandings();
   ligaRenderPartidos();
   if(IS_ADMIN) ligaRenderAdminInput();
