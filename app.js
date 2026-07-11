@@ -3279,12 +3279,14 @@ function showTab(id,btn){
 // ── RUN MODEL ─────────────────────────────────────────────────────────────────
 // Versión silenciosa del modelo — corre en background sin UI de loading
 async function runModelSilent(){
+  if(CURRENT_COMPETITION!=='mundial2026') return; // evita pisar otra competición si esto resuelve tarde
   try{
     const fx=getFx(); const u=bayesUpd();
     GS=calcGS(u,fx);
     BD=calcBD(u);
     MCP=calcProbs(u,fx);
     PD=buildPD(u,fx);
+    if(CURRENT_COMPETITION!=='mundial2026') return; // re-chequeo por si cambió durante el cálculo
     renderGroups(); renderBracket(); renderRanking(); renderPartidos(); renderTracker();
     const koSection=document.getElementById('ko-section');
     if(koSection) koSection.innerHTML=renderKnockoutInputs();
@@ -3648,11 +3650,13 @@ function initApp(){
   (async function initData(){
     // 1. Cargar desde Supabase
     const loaded = await loadFromSupabase();
+    if(CURRENT_COMPETITION!=='mundial2026') return; // el usuario ya cambió de competición
     if(loaded) buildMatchList();
 
     // 2. Auto-sync desde openfootball
     try{
       const res=await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json');
+      if(CURRENT_COMPETITION!=='mundial2026') return;
       if(res.ok){
         const data=await res.json();
         const matches=data.matches||[];
@@ -3687,10 +3691,12 @@ function initApp(){
     } catch(e){ /* silencioso */ }
 
     // 3. Correr modelo con todos los datos cargados
+    if(CURRENT_COMPETITION!=='mundial2026') return;
     document.getElementById('hdr-sub').innerHTML=IS_ADMIN
       ?'⚙️ Calculando probabilidades...'
       :'☁️ Calculando probabilidades...';
     await runModelSilent();
+    if(CURRENT_COMPETITION!=='mundial2026') return;
     document.getElementById('hdr-sub').innerHTML=IS_ADMIN
       ?'✅ Modelo actualizado · '+Object.keys(getFx()).length+' resultados cargados'
       :'☁️ Análisis listo · Explora los pronósticos del Mundial FIFA 2026';
@@ -4466,6 +4472,7 @@ async function ligaInitApp(){
   ligaInitStr();
   ligaLoadFromStorage();       // ← respaldo local primero (siempre disponible)
   await ligaLoadFromSupabase(); // luego intenta la nube (si Supabase falla, ya tienes el local)
+  if(CURRENT_COMPETITION!=='ligapro') return; // el usuario ya cambió de competición mientras cargaba
   ligaRenderStandings();
   ligaRenderPartidos();
   if(IS_ADMIN) ligaRenderAdminInput();
