@@ -4054,6 +4054,7 @@ function ligaRenderPCard(m){
 }
 
 let LIGA_SEARCH_Q = '';
+let LIGA_FECHA_FILTER = 'all';
 
 function ligaFilterMatches(val){
   LIGA_SEARCH_Q = val || '';
@@ -4062,6 +4063,11 @@ function ligaFilterMatches(val){
     const inp = document.getElementById('liga-search-input');
     if(inp){ inp.focus(); inp.setSelectionRange(LIGA_SEARCH_Q.length, LIGA_SEARCH_Q.length); }
   }, 10);
+}
+
+function ligaFiltFecha(fecha, btn){
+  LIGA_FECHA_FILTER = fecha;
+  ligaRenderPartidos();
 }
 
 function ligaRenderPartidos(){
@@ -4080,16 +4086,23 @@ function ligaRenderPartidos(){
     return ta.includes(sq)||tb.includes(sq);
   }
 
-  let html = `<div style="margin-bottom:.8rem">
+  // Filtro de fecha — igual de importante que el buscador cuando hay muchas fechas cargadas
+  const fechaKeys = Object.keys(LIGA_FIXTURES);
+  let html = `<div class="rfilt" style="margin-bottom:.8rem">
+    <button class="rfbtn${LIGA_FECHA_FILTER==='all'?' active':''}" onclick="ligaFiltFecha('all',this)">Todas</button>
+    ${fechaKeys.map(fk=>`<button class="rfbtn${LIGA_FECHA_FILTER===fk?' active':''}" onclick="ligaFiltFecha('${fk}',this)">${fk}</button>`).join('')}
+  </div>`;
+
+  html += `<div style="margin-bottom:.8rem">
     <input id="liga-search-input" type="text" placeholder="🔍 Buscar equipo o partido (ej: Barcelona · Barcelona Emelec)" value="${LIGA_SEARCH_Q}"
       oninput="ligaFilterMatches(this.value)"
       style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box"
       onfocus="this.style.borderColor='#111'" onblur="this.style.borderColor='#ddd'">
   </div>`;
 
-  const filtered = LIGA_PD.filter(matchesSearch);
+  const filtered = LIGA_PD.filter(m => (LIGA_FECHA_FILTER==='all' || m.fecha===LIGA_FECHA_FILTER) && matchesSearch(m));
   if(!filtered.length){
-    html += `<div class="infobox">No se encontraron partidos para <strong>"${LIGA_SEARCH_Q}"</strong>.<br><span style="font-size:11px;color:#aaa">Prueba con un equipo ("Barcelona") o dos equipos ("Barcelona Emelec")</span></div>`;
+    html += `<div class="infobox">No se encontraron partidos${LIGA_SEARCH_Q?` para <strong>"${LIGA_SEARCH_Q}"</strong>`:' en esta fecha'}.<br><span style="font-size:11px;color:#aaa">Prueba con un equipo ("Barcelona") o dos equipos ("Barcelona Emelec")</span></div>`;
     cont.innerHTML = html;
     return;
   }
@@ -4434,18 +4447,32 @@ function ligaIsMatchPast(dateStr){
   return d <= today;
 }
 
+let LIGA_FECHA_FILTER_ADMIN = 'all';
+
+function ligaFiltFechaAdmin(fecha, btn){
+  LIGA_FECHA_FILTER_ADMIN = fecha;
+  ligaRenderAdminInput();
+}
+
 function ligaRenderAdminInput(){
   const cont = document.getElementById('mcont-liga');
   if(!cont) return;
+  const fechaKeys = Object.keys(LIGA_FIXTURES);
   let html = `<div style="background:#fffbea;border:1.5px solid #f5c518;border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:#856404">
     💡 LigaPro no tiene sincronización automática — el calendario se actualiza a mano cada semana, e ingresa cada resultado apenas se juegue.
   </div>
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
     <button onclick="ligaSaveAll()" id="liga-save-all-btn" style="padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500;font-size:13px">💾 Guardar todos los resultados</button>
     <span id="liga-save-all-status" style="font-size:12px;color:#1a5e34"></span>
+  </div>
+  <div class="rfilt" style="margin-bottom:1rem">
+    <button class="rfbtn${LIGA_FECHA_FILTER_ADMIN==='all'?' active':''}" onclick="ligaFiltFechaAdmin('all',this)">Todas</button>
+    ${fechaKeys.map(fk=>`<button class="rfbtn${LIGA_FECHA_FILTER_ADMIN===fk?' active':''}" onclick="ligaFiltFechaAdmin('${fk}',this)">${fk}</button>`).join('')}
   </div>`;
 
-  for(const [fecha, matches] of Object.entries(LIGA_FIXTURES)){
+  const fechasToShow = LIGA_FECHA_FILTER_ADMIN==='all' ? fechaKeys : [LIGA_FECHA_FILTER_ADMIN];
+  fechasToShow.forEach(fecha=>{
+    const matches = LIGA_FIXTURES[fecha];
     const playedCount = matches.filter(m=>ligaGetResult(m.ta,m.tb)).length;
     const pendingPast = matches.filter(m=>!ligaGetResult(m.ta,m.tb) && ligaIsMatchPast(m.date)).length;
     html += `<p class="slabel">${fecha} <span style="font-size:10px;color:#aaa;font-weight:400;text-transform:none">· ${playedCount}/${matches.length} jugados${pendingPast>0?` · <span style="color:#856404">⚠️ ${pendingPast} por ingresar</span>`:''}</span></p><div class="rgrid">`;
@@ -4467,7 +4494,7 @@ function ligaRenderAdminInput(){
       </div>`;
     });
     html += '</div>';
-  }
+  });
   cont.innerHTML = html;
 }
 
