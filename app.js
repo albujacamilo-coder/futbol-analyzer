@@ -4415,6 +4415,10 @@ function ligaRenderAdminInput(){
   if(!cont) return;
   let html = `<div style="background:#fffbea;border:1.5px solid #f5c518;border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:#856404">
     💡 LigaPro no tiene sincronización automática — el calendario se actualiza a mano cada semana, e ingresa cada resultado apenas se juegue.
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+    <button onclick="ligaSaveAll()" id="liga-save-all-btn" style="padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500;font-size:13px">💾 Guardar todos los resultados</button>
+    <span id="liga-save-all-status" style="font-size:12px;color:#1a5e34"></span>
   </div>`;
 
   for(const [fecha, matches] of Object.entries(LIGA_FIXTURES)){
@@ -4438,6 +4442,27 @@ function ligaRenderAdminInput(){
   cont.innerHTML = html;
 }
 
+// Guarda TODO lo que haya en LIGA_RR de una vez — localStorage + reenvío a Supabase.
+// Sirve de red de seguridad manual, además del guardado automático al escribir cada marcador.
+async function ligaSaveAll(){
+  const btn = document.getElementById('liga-save-all-btn');
+  const status = document.getElementById('liga-save-all-status');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
+  ligaSaveToStorage();
+  let count = 0;
+  for(const [key, r] of Object.entries(LIGA_RR)){
+    if(r && r[0]!==undefined && r[1]!==undefined){
+      await saveToSupabase('LIGA_'+key, r[0], r[1], 'ligapro');
+      count++;
+    }
+  }
+  if(btn){ btn.disabled = false; btn.textContent = '💾 Guardar todos los resultados'; }
+  if(status){
+    status.textContent = `✅ ${count} resultado(s) guardados (local + nube)`;
+    setTimeout(()=>{ status.textContent=''; }, 4000);
+  }
+}
+
 async function ligaLoadFromSupabase(){
   try{
     const rows = await sb.getAll();
@@ -4455,6 +4480,7 @@ function ligaRefreshModel(){
   const btn = document.getElementById('btnrun');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Actualizando...'; }
   setTimeout(()=>{
+    if(CURRENT_COMPETITION!=='ligapro'){ if(btn){ btn.disabled=false; } return; } // ya no estamos en LigaPro
     ligaRenderStandings();
     ligaRenderPartidos();
     if(IS_ADMIN) ligaRenderAdminInput();
