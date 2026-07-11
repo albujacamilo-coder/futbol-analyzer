@@ -4428,6 +4428,12 @@ function ligaSetResult(ta, tb, idx, val){
   }
 }
 
+function ligaIsMatchPast(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const today = new Date(); today.setHours(23,59,59,0);
+  return d <= today;
+}
+
 function ligaRenderAdminInput(){
   const cont = document.getElementById('mcont-liga');
   if(!cont) return;
@@ -4441,17 +4447,22 @@ function ligaRenderAdminInput(){
 
   for(const [fecha, matches] of Object.entries(LIGA_FIXTURES)){
     const playedCount = matches.filter(m=>ligaGetResult(m.ta,m.tb)).length;
-    html += `<p class="slabel">${fecha} <span style="font-size:10px;color:#aaa;font-weight:400;text-transform:none">· ${playedCount}/${matches.length} jugados</span></p><div class="rgrid">`;
+    const pendingPast = matches.filter(m=>!ligaGetResult(m.ta,m.tb) && ligaIsMatchPast(m.date)).length;
+    html += `<p class="slabel">${fecha} <span style="font-size:10px;color:#aaa;font-weight:400;text-transform:none">· ${playedCount}/${matches.length} jugados${pendingPast>0?` · <span style="color:#856404">⚠️ ${pendingPast} por ingresar</span>`:''}</span></p><div class="rgrid">`;
     matches.forEach(m=>{
       const real = ligaGetResult(m.ta, m.tb);
       const pl = !!real;
+      const past = !pl && ligaIsMatchPast(m.date);
       const dateLabel = new Date(m.date+'T00:00:00').toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
-      html += `<div class="mrow${pl?' played':''}">
+      const rowClass = pl ? ' played' : (past ? ' needs-result' : '');
+      const warningTag = past ? '<span class="needs-tag">⚠️ Ingresar</span>' : '';
+      html += `<div class="mrow${rowClass}">
         <span class="ta${pl&&real.ga>real.gb?' wt':''}" style="font-size:12px">${m.ta}</span>
         <input class="sinp" type="number" min="0" max="15" value="${pl?real.ga:''}" placeholder="-" onchange="ligaSetResult('${m.ta}','${m.tb}',0,this.value)">
         <span class="sep">:</span>
         <input class="sinp" type="number" min="0" max="15" value="${pl?real.gb:''}" placeholder="-" onchange="ligaSetResult('${m.ta}','${m.tb}',1,this.value)">
         <span class="tb${pl&&real.gb>real.ga?' wt':''}" style="font-size:12px">${m.tb}</span>
+        ${warningTag}
         <span style="font-size:9px;color:#999;grid-column:1/-1;text-align:center;margin-top:-2px">${dateLabel}</span>
       </div>`;
     });
