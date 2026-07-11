@@ -4547,10 +4547,16 @@ async function ligaInitApp(){
   const btnSync = document.getElementById('btn-sync');
   if(btnSync) btnSync.style.display = 'none';
 
-  const panelRanking = document.getElementById('panel-ranking');
-  const panelTracker = document.getElementById('panel-tracker');
-  if(panelRanking) panelRanking.innerHTML = '<div class="infobox">Probabilidades de título, Libertadores, Sudamericana y descenso — disponible cuando se acerque la Fase Final (fecha 30).</div>';
-  if(panelTracker) panelTracker.innerHTML = '<div class="infobox">Tracker de aciertos — disponible después de que se jueguen las primeras fechas con resultados ingresados.</div>';
+  // IMPORTANTE: no reemplazar el innerHTML de los paneles completos — eso destruye
+  // elementos internos (#rbody, #scards, #tracker-cont) que el Mundial necesita
+  // que sigan existiendo para poder renderizar ahí cuando el usuario regrese.
+  // En su lugar, solo vaciamos/mensajeamos esos elementos puntuales sin borrarlos.
+  const scardsEl = document.getElementById('scards');
+  const rbodyEl = document.getElementById('rbody');
+  const trackerContEl = document.getElementById('tracker-cont');
+  if(scardsEl) scardsEl.innerHTML = '<div class="infobox" style="grid-column:1/-1">Probabilidades de título, Libertadores, Sudamericana y descenso — disponible cuando se acerque la Fase Final (fecha 30).</div>';
+  if(rbodyEl) rbodyEl.innerHTML = '';
+  if(trackerContEl) trackerContEl.innerHTML = '<div class="infobox">Tracker de aciertos — disponible después de que se jueguen las primeras fechas con resultados ingresados.</div>';
 
   document.getElementById('hdr-sub').innerHTML = '✅ Datos cargados · Fase Regular · Calendario: ' + Object.keys(LIGA_FIXTURES).join(', ');
 }
