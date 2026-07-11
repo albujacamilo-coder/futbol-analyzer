@@ -3279,14 +3279,15 @@ function showTab(id,btn){
 // ── RUN MODEL ─────────────────────────────────────────────────────────────────
 // Versión silenciosa del modelo — corre en background sin UI de loading
 async function runModelSilent(){
-  if(CURRENT_COMPETITION!=='mundial2026') return; // evita pisar otra competición si esto resuelve tarde
+  const myEpoch = COMP_EPOCH;
+  if(CURRENT_COMPETITION!=='mundial2026') return;
   try{
     const fx=getFx(); const u=bayesUpd();
     GS=calcGS(u,fx);
     BD=calcBD(u);
     MCP=calcProbs(u,fx);
     PD=buildPD(u,fx);
-    if(CURRENT_COMPETITION!=='mundial2026') return; // re-chequeo por si cambió durante el cálculo
+    if(COMP_EPOCH!==myEpoch) return; // el usuario cambió de competición mientras esto calculaba
     renderGroups(); renderBracket(); renderRanking(); renderPartidos(); renderTracker();
     const koSection=document.getElementById('ko-section');
     if(koSection) koSection.innerHTML=renderKnockoutInputs();
@@ -3508,6 +3509,8 @@ function showApiStatus(msg,type,persistent=false){
 
 // ── NAVEGACIÓN ENTRE COMPETICIONES ───────────────────────────────────────────
 let CURRENT_COMPETITION = 'mundial2026';
+let COMP_EPOCH = 0; // se incrementa cada vez que se cambia de competición — cualquier
+                     // proceso en curso que termine después de un cambio se auto-cancela
 
 const COMPETITION_NAMES = {
   'mundial2026': '🌍 Mundial FIFA 2026',
@@ -3528,11 +3531,17 @@ function enterCompetition(id){
     showComingSoonModal(name);
     return;
   }
+  COMP_EPOCH++; // invalida cualquier proceso en curso de la competición anterior
   CURRENT_COMPETITION=id;
   document.getElementById('home-screen').style.display='none';
   document.getElementById('main-app').style.display='block';
   const titleEl=document.getElementById('app-title');
   if(titleEl) titleEl.innerHTML=(COMPETITION_NAMES[id]||id)+' <span id="ubadge" style="display:none" class="ubadge">✓ Actualizado</span>';
+  // Limpiar contenedores compartidos para que nunca se vea contenido de la competición anterior
+  ['pcont','gcont','mcont'].forEach(cid=>{
+    const el=document.getElementById(cid);
+    if(el) el.innerHTML='<div class="infobox">Cargando...</div>';
+  });
   // Inicializar la app para esta competición
   if(id==='ligapro'){ ligaInitApp(); return; }
   initApp();
@@ -3648,15 +3657,16 @@ function initApp(){
     :'☁️ Cargando análisis...';
 
   (async function initData(){
+    const myEpoch = COMP_EPOCH;
     // 1. Cargar desde Supabase
     const loaded = await loadFromSupabase();
-    if(CURRENT_COMPETITION!=='mundial2026') return; // el usuario ya cambió de competición
+    if(COMP_EPOCH!==myEpoch) return; // el usuario ya cambió de competición
     if(loaded) buildMatchList();
 
     // 2. Auto-sync desde openfootball
     try{
       const res=await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json');
-      if(CURRENT_COMPETITION!=='mundial2026') return;
+      if(COMP_EPOCH!==myEpoch) return;
       if(res.ok){
         const data=await res.json();
         const matches=data.matches||[];
@@ -3691,12 +3701,12 @@ function initApp(){
     } catch(e){ /* silencioso */ }
 
     // 3. Correr modelo con todos los datos cargados
-    if(CURRENT_COMPETITION!=='mundial2026') return;
+    if(COMP_EPOCH!==myEpoch) return;
     document.getElementById('hdr-sub').innerHTML=IS_ADMIN
       ?'⚙️ Calculando probabilidades...'
       :'☁️ Calculando probabilidades...';
     await runModelSilent();
-    if(CURRENT_COMPETITION!=='mundial2026') return;
+    if(COMP_EPOCH!==myEpoch) return;
     document.getElementById('hdr-sub').innerHTML=IS_ADMIN
       ?'✅ Modelo actualizado · '+Object.keys(getFx()).length+' resultados cargados'
       :'☁️ Análisis listo · Explora los pronósticos del Mundial FIFA 2026';
@@ -4477,10 +4487,11 @@ async function ligaLoadFromSupabase(){
 
 // ── ACTUALIZAR (liviano, solo recalcula — no toca nada del Mundial) ────────
 function ligaRefreshModel(){
+  const myEpoch = COMP_EPOCH;
   const btn = document.getElementById('btnrun');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Actualizando...'; }
   setTimeout(()=>{
-    if(CURRENT_COMPETITION!=='ligapro'){ if(btn){ btn.disabled=false; } return; } // ya no estamos en LigaPro
+    if(COMP_EPOCH!==myEpoch){ if(btn){ btn.disabled=false; } return; } // ya no estamos en LigaPro
     ligaRenderStandings();
     ligaRenderPartidos();
     if(IS_ADMIN) ligaRenderAdminInput();
@@ -4495,10 +4506,11 @@ function ligaRefreshModel(){
 
 // ── INIT ─────────────────────────────────────────────────────────────────
 async function ligaInitApp(){
+  const myEpoch = COMP_EPOCH;
   ligaInitStr();
   ligaLoadFromStorage();       // ← respaldo local primero (siempre disponible)
   await ligaLoadFromSupabase(); // luego intenta la nube (si Supabase falla, ya tienes el local)
-  if(CURRENT_COMPETITION!=='ligapro') return; // el usuario ya cambió de competición mientras cargaba
+  if(COMP_EPOCH!==myEpoch) return; // el usuario ya cambió de competición mientras cargaba
   ligaRenderStandings();
   ligaRenderPartidos();
   if(IS_ADMIN) ligaRenderAdminInput();
