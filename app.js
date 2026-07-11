@@ -3602,7 +3602,7 @@ function initApp(){
   if(btnrunReset){ btnrunReset.onclick=runModel; btnrunReset.textContent='▶ Actualizar modelo'; }
 
   // Restaurar el filtro de fases (LigaPro lo oculta)
-  const rfiltReset = document.querySelector('.rfilt');
+  const rfiltReset = document.getElementById('mundial-rfilt');
   if(rfiltReset) rfiltReset.style.display = '';
 
   // Restaurar el botón de sincronización (LigaPro lo oculta)
@@ -4570,7 +4570,7 @@ async function ligaInitApp(){
   });
 
   // Ocultar el filtro de fases del Mundial (Grupos/R32/Octavos...) — no aplica a LigaPro
-  const rfilt = document.querySelector('.rfilt');
+  const rfilt = document.getElementById('mundial-rfilt');
   if(rfilt) rfilt.style.display = 'none';
 
   // El botón "Actualizar modelo" pasa a ser liviano y propio de LigaPro,
