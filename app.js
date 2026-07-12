@@ -199,11 +199,12 @@ const sb = {
       `${SUPABASE_URL}/rest/v1/resultados?clave=eq.${encodeURIComponent(clave)}&select=id`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
-    const existing = check.ok ? await check.json() : [];
+    if(!check.ok){ console.warn('Supabase check falló:', check.status, await check.text().catch(()=>'')); return false; }
+    const existing = await check.json();
 
     if (existing.length > 0) {
       // Update
-      await fetch(`${SUPABASE_URL}/rest/v1/resultados?clave=eq.${encodeURIComponent(clave)}`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/resultados?clave=eq.${encodeURIComponent(clave)}`, {
         method: 'PATCH',
         headers: {
           'apikey': SUPABASE_KEY,
@@ -212,9 +213,11 @@ const sb = {
         },
         body: JSON.stringify({ goles_local, goles_visita, tipo })
       });
+      if(!res.ok){ console.warn('Supabase PATCH falló para', clave, ':', res.status, await res.text().catch(()=>'')); return false; }
+      return true;
     } else {
       // Insert
-      await fetch(`${SUPABASE_URL}/rest/v1/resultados`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/resultados`, {
         method: 'POST',
         headers: {
           'apikey': SUPABASE_KEY,
@@ -223,6 +226,8 @@ const sb = {
         },
         body: JSON.stringify({ clave, goles_local, goles_visita, tipo })
       });
+      if(!res.ok){ console.warn('Supabase INSERT falló para', clave, ':', res.status, await res.text().catch(()=>'')); return false; }
+      return true;
     }
   },
   async deleteAll() {
@@ -259,9 +264,10 @@ async function loadFromSupabase() {
 // ── GUARDAR EN SUPABASE ───────────────────────────────────────────────────────
 async function saveToSupabase(clave, goles_local, goles_visita, tipo = 'grupo') {
   try {
-    await sb.upsert(clave, goles_local, goles_visita, tipo);
+    return await sb.upsert(clave, goles_local, goles_visita, tipo);
   } catch(e) {
-    console.warn('Error guardando en Supabase:', e);
+    console.warn('Error guardando en Supabase:', clave, e);
+    return false;
   }
 }
 
@@ -4434,7 +4440,9 @@ function ligaSetResult(ta, tb, idx, val){
   LIGA_RR[key][idx] = v;
   ligaSaveToStorage();  // ← respaldo inmediato, no depende de que Supabase funcione
   if(LIGA_RR[key][0]!==undefined && LIGA_RR[key][1]!==undefined){
-    saveToSupabase('LIGA_'+key, LIGA_RR[key][0], LIGA_RR[key][1], 'ligapro');
+    saveToSupabase('LIGA_'+key, LIGA_RR[key][0], LIGA_RR[key][1], 'ligapro').then(ok=>{
+      if(!ok) alert('⚠️ No se pudo guardar '+ta+' vs '+tb+' en la nube (sí quedó guardado en este dispositivo). Revisa la consola (F12) para más detalle.');
+    });
     ligaRenderAdminInput();
     ligaRenderStandings();
     ligaRenderPartidos();
@@ -4505,17 +4513,28 @@ async function ligaSaveAll(){
   const status = document.getElementById('liga-save-all-status');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
   ligaSaveToStorage();
-  let count = 0;
+  let okCount = 0;
+  let failed = [];
   for(const [key, r] of Object.entries(LIGA_RR)){
     if(r && r[0]!==undefined && r[1]!==undefined){
-      await saveToSupabase('LIGA_'+key, r[0], r[1], 'ligapro');
-      count++;
+      try{
+        const ok = await saveToSupabase('LIGA_'+key, r[0], r[1], 'ligapro');
+        if(ok) okCount++; else failed.push(key);
+      } catch(e){
+        console.warn('Fallo guardando', key, e);
+        failed.push(key);
+      }
     }
   }
   if(btn){ btn.disabled = false; btn.textContent = '💾 Guardar todos los resultados'; }
   if(status){
-    status.textContent = `✅ ${count} resultado(s) guardados (local + nube)`;
-    setTimeout(()=>{ status.textContent=''; }, 4000);
+    if(failed.length===0){
+      status.textContent = `✅ ${okCount} resultado(s) guardados en la nube (confirmado)`;
+      status.style.color = '#1a5e34';
+    } else {
+      status.textContent = `⚠️ ${okCount} guardados, ${failed.length} FALLARON: ${failed.join(', ')} — revisa la consola (F12)`;
+      status.style.color = '#c00';
+    }
   }
 }
 
