@@ -4550,9 +4550,14 @@ async function ligaLoadFromSupabase(){
       `${SUPABASE_URL}/rest/v1/resultados?tipo=eq.ligapro&select=*&limit=5000`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
-    if(!res.ok){ console.warn('Supabase (LigaPro) respondió con error:', res.status, await res.text().catch(()=>'')); return; }
+    if(!res.ok){
+      const msg = await res.text().catch(()=>'');
+      console.warn('Supabase (LigaPro) respondió con error:', res.status, msg);
+      return { ok:false, count:0, error: `HTTP ${res.status}` };
+    }
     const rows = await res.json();
     const seasonPrefix = LIGA_SEASON + '_';
+    let count = 0;
     rows.forEach(r=>{
       if(!r.clave || !r.clave.startsWith('LIGA_')) return;
       const rest = r.clave.slice(5); // quitar el prefijo "LIGA_"
@@ -4560,16 +4565,20 @@ async function ligaLoadFromSupabase(){
         // Formato nuevo: LIGA_2026_Equipo|Equipo — de la temporada activa
         const clave = rest.slice(seasonPrefix.length);
         LIGA_RR[clave] = [r.goles_local, r.goles_visita];
+        count++;
       } else if(!/^\d{4}_/.test(rest)){
         // Formato antiguo sin temporada (datos de antes de este cambio) —
         // se asume que pertenecen a la temporada activa, por compatibilidad.
         LIGA_RR[rest] = [r.goles_local, r.goles_visita];
+        count++;
       }
       // Si empieza con otro año (ej. "2025_"), es de una temporada pasada — se ignora
-      // a propósito para que no afecte la tabla/predicciones actuales, aunque el dato
-      // se queda guardado en Supabase por si algún día se usa para historial.
     });
-  } catch(e){ console.warn('Error cargando LigaPro desde Supabase:', e); }
+    return { ok:true, count, totalRows: rows.length, error:null };
+  } catch(e){
+    console.warn('Error cargando LigaPro desde Supabase:', e);
+    return { ok:false, count:0, error: String(e && e.message || e) };
+  }
 }
 
 // ── ACTUALIZAR (liviano, solo recalcula — no toca nada del Mundial) ────────
@@ -4596,8 +4605,9 @@ async function ligaInitApp(){
   const myEpoch = COMP_EPOCH;
   ligaInitStr();
   ligaLoadFromStorage();       // ← respaldo local primero (siempre disponible)
-  await ligaLoadFromSupabase(); // luego intenta la nube (si Supabase falla, ya tienes el local)
-  if(COMP_EPOCH!==myEpoch) return; // el usuario ya cambió de competición mientras cargaba
+
+  // Igual que el Mundial: mostrar algo YA con lo que tengamos a mano,
+  // en vez de esperar a la nube antes de pintar nada.
   ligaRenderStandings();
   ligaRenderPartidos();
   if(IS_ADMIN) ligaRenderAdminInput();
@@ -4626,10 +4636,6 @@ async function ligaInitApp(){
   const btnSync = document.getElementById('btn-sync');
   if(btnSync) btnSync.style.display = 'none';
 
-  // IMPORTANTE: no reemplazar el innerHTML de los paneles completos — eso destruye
-  // elementos internos (#rbody, #scards, #tracker-cont) que el Mundial necesita
-  // que sigan existiendo para poder renderizar ahí cuando el usuario regrese.
-  // En su lugar, solo vaciamos/mensajeamos esos elementos puntuales sin borrarlos.
   const scardsEl = document.getElementById('scards');
   const rbodyEl = document.getElementById('rbody');
   const trackerContEl = document.getElementById('tracker-cont');
@@ -4637,5 +4643,23 @@ async function ligaInitApp(){
   if(rbodyEl) rbodyEl.innerHTML = '';
   if(trackerContEl) trackerContEl.innerHTML = '<div class="infobox">Tracker de aciertos — disponible después de que se jueguen las primeras fechas con resultados ingresados.</div>';
 
-  document.getElementById('hdr-sub').innerHTML = '✅ Datos cargados · Fase Regular · Calendario: ' + Object.keys(LIGA_FIXTURES).join(', ');
+  document.getElementById('hdr-sub').innerHTML = '☁️ Cargando resultados desde la nube...';
+
+  // Ahora sí, en segundo plano: traer la nube y avisar EN PANTALLA qué pasó
+  // (sin necesitar consola ni herramientas técnicas — esto se ve en cualquier celular)
+  const result = await ligaLoadFromSupabase();
+  if(COMP_EPOCH!==myEpoch) return; // el usuario ya cambió de competición mientras cargaba
+
+  ligaRenderStandings();
+  ligaRenderPartidos();
+  if(IS_ADMIN) ligaRenderAdminInput();
+
+  const hdrSub = document.getElementById('hdr-sub');
+  if(hdrSub){
+    if(result && result.ok){
+      hdrSub.innerHTML = `✅ ${result.count} resultado(s) de LigaPro cargados desde la nube (de ${result.totalRows} en total) · Fase Regular`;
+    } else {
+      hdrSub.innerHTML = `⚠️ No se pudo cargar desde la nube (${result ? result.error : 'error desconocido'}) — mostrando solo lo guardado en este dispositivo`;
+    }
+  }
 }
