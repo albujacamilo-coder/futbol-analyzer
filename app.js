@@ -185,7 +185,7 @@ function premiumBanner(feature){
 // Cliente Supabase simplificado (sin librería externa)
 const sb = {
   async getAll() {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/resultados?select=*`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/resultados?select=*&limit=5000`, {
       headers: {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`
@@ -3745,6 +3745,12 @@ function initApp(){
 // Calendario: LigaPro solo publica 2 fechas por adelantado. LIGA_FIXTURES se
 // actualiza a mano cada semana con lo que la liga vaya confirmando.
 
+// Temporada activa — el historial de temporadas anteriores queda guardado en
+// Supabase (nunca se borra), pero la app solo carga/usa la temporada actual.
+// Cuando empiece la temporada 2027, solo hay que cambiar este valor y
+// actualizar LIGA_TD / LIGA_FIXTURES con los datos de la nueva temporada.
+const LIGA_SEASON = '2026';
+
 const LIGA_TEAMS = [
   "Independiente del Valle","Deportivo Cuenca","U. Católica","Barcelona SC",
   "Aucas","LDU Quito","Orense SC","Emelec","Técnico Universitario","Macará",
@@ -4440,7 +4446,7 @@ function ligaSetResult(ta, tb, idx, val){
   LIGA_RR[key][idx] = v;
   ligaSaveToStorage();  // ← respaldo inmediato, no depende de que Supabase funcione
   if(LIGA_RR[key][0]!==undefined && LIGA_RR[key][1]!==undefined){
-    saveToSupabase('LIGA_'+key, LIGA_RR[key][0], LIGA_RR[key][1], 'ligapro').then(ok=>{
+    saveToSupabase('LIGA_'+LIGA_SEASON+'_'+key, LIGA_RR[key][0], LIGA_RR[key][1], 'ligapro').then(ok=>{
       if(!ok) alert('⚠️ No se pudo guardar '+ta+' vs '+tb+' en la nube (sí quedó guardado en este dispositivo). Revisa la consola (F12) para más detalle.');
     });
     ligaRenderAdminInput();
@@ -4518,7 +4524,7 @@ async function ligaSaveAll(){
   for(const [key, r] of Object.entries(LIGA_RR)){
     if(r && r[0]!==undefined && r[1]!==undefined){
       try{
-        const ok = await saveToSupabase('LIGA_'+key, r[0], r[1], 'ligapro');
+        const ok = await saveToSupabase('LIGA_'+LIGA_SEASON+'_'+key, r[0], r[1], 'ligapro');
         if(ok) okCount++; else failed.push(key);
       } catch(e){
         console.warn('Fallo guardando', key, e);
@@ -4540,12 +4546,28 @@ async function ligaSaveAll(){
 
 async function ligaLoadFromSupabase(){
   try{
-    const rows = await sb.getAll();
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/resultados?tipo=eq.ligapro&select=*&limit=5000`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    if(!res.ok){ console.warn('Supabase (LigaPro) respondió con error:', res.status, await res.text().catch(()=>'')); return; }
+    const rows = await res.json();
+    const seasonPrefix = LIGA_SEASON + '_';
     rows.forEach(r=>{
-      if(r.tipo==='ligapro'){
-        const clave = r.clave.replace('LIGA_','');
+      if(!r.clave || !r.clave.startsWith('LIGA_')) return;
+      const rest = r.clave.slice(5); // quitar el prefijo "LIGA_"
+      if(rest.startsWith(seasonPrefix)){
+        // Formato nuevo: LIGA_2026_Equipo|Equipo — de la temporada activa
+        const clave = rest.slice(seasonPrefix.length);
         LIGA_RR[clave] = [r.goles_local, r.goles_visita];
+      } else if(!/^\d{4}_/.test(rest)){
+        // Formato antiguo sin temporada (datos de antes de este cambio) —
+        // se asume que pertenecen a la temporada activa, por compatibilidad.
+        LIGA_RR[rest] = [r.goles_local, r.goles_visita];
       }
+      // Si empieza con otro año (ej. "2025_"), es de una temporada pasada — se ignora
+      // a propósito para que no afecte la tabla/predicciones actuales, aunque el dato
+      // se queda guardado en Supabase por si algún día se usa para historial.
     });
   } catch(e){ console.warn('Error cargando LigaPro desde Supabase:', e); }
 }
