@@ -4,7 +4,18 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // ── MODO ADMIN ────────────────────────────────────────────────────────────────
 const ADMIN_SECRET = 'futbol2026admin';
-const IS_ADMIN = new URLSearchParams(window.location.search).get('admin') === ADMIN_SECRET;
+const ADMIN_LS_KEY = 'fsp_is_admin';
+
+// Si entra con el link de siempre (?admin=...), se activa Y se recuerda en este
+// dispositivo — así, la app instalada (que no tiene barra de direcciones para
+// volver a escribir el código) sigue reconociéndote como admin la próxima vez.
+const URL_ADMIN_MATCH = new URLSearchParams(window.location.search).get('admin') === ADMIN_SECRET;
+if (URL_ADMIN_MATCH) {
+  try { localStorage.setItem(ADMIN_LS_KEY, '1'); } catch(e) {}
+}
+const IS_ADMIN = URL_ADMIN_MATCH || (function(){
+  try { return localStorage.getItem(ADMIN_LS_KEY) === '1'; } catch(e) { return false; }
+})();
 
 // ── SISTEMA DE ACCESO PREMIUM ─────────────────────────────────────────────────
 // IS_PREMIUM: true si admin, si tiene código válido guardado, o si es modo preview
@@ -3809,6 +3820,40 @@ const LIGA_FIXTURES = {
     {ta:"LDU Quito",       tb:"Libertad",                 date:"2026-07-12"},
     {ta:"Deportivo Cuenca",tb:"Aucas",                    date:"2026-07-12"},
     {ta:"Emelec",          tb:"Barcelona SC",             date:"2026-07-12"}
+  ],
+  // Nota: la fuente oficial listaba un equipo "Vinotinto" — lo mapeamos a
+  // Mushuc Runa (encaja matemáticamente: es el único de los 16 que faltaba
+  // en cada una de estas 3 fechas, y su camiseta es justamente vino/granate).
+  // Pendiente de que Camilo confirme.
+  "Fecha 19": [
+    {ta:"Macará",                  tb:"Mushuc Runa",           date:"2026-07-14"},
+    {ta:"Manta FC",                tb:"Delfín",                date:"2026-07-14"},
+    {ta:"Libertad",                tb:"Técnico Universitario", date:"2026-07-15"},
+    {ta:"Leones FC",               tb:"Deportivo Cuenca",      date:"2026-07-15"},
+    {ta:"U. Católica",             tb:"LDU Quito",             date:"2026-07-15"},
+    {ta:"Barcelona SC",            tb:"Guayaquil City",        date:"2026-07-15"},
+    {ta:"Aucas",                   tb:"Independiente del Valle",date:"2026-07-16"},
+    {ta:"Orense SC",               tb:"Emelec",                date:"2026-07-16"}
+  ],
+  "Fecha 20": [
+    {ta:"Delfín",                  tb:"Macará",                date:"2026-07-17"},
+    {ta:"U. Católica",             tb:"Deportivo Cuenca",      date:"2026-07-18"},
+    {ta:"Leones FC",               tb:"LDU Quito",             date:"2026-07-18"},
+    {ta:"Libertad",                tb:"Barcelona SC",          date:"2026-07-18"},
+    {ta:"Técnico Universitario",   tb:"Aucas",                 date:"2026-07-19"},
+    {ta:"Guayaquil City",          tb:"Manta FC",              date:"2026-07-19"},
+    {ta:"Independiente del Valle", tb:"Emelec",                date:"2026-07-19"},
+    {ta:"Orense SC",               tb:"Mushuc Runa",           date:"2026-07-20"}
+  ],
+  "Fecha 21": [
+    {ta:"Libertad",                tb:"Delfín",                date:"2026-07-21"},
+    {ta:"U. Católica",             tb:"Barcelona SC",          date:"2026-07-21"},
+    {ta:"Macará",                  tb:"Deportivo Cuenca",      date:"2026-07-22"},
+    {ta:"Independiente del Valle", tb:"Técnico Universitario", date:"2026-07-22"},
+    {ta:"Manta FC",                tb:"LDU Quito",             date:"2026-07-22"},
+    {ta:"Leones FC",               tb:"Guayaquil City",        date:"2026-07-23"},
+    {ta:"Orense SC",               tb:"Aucas",                 date:"2026-07-23"},
+    {ta:"Mushuc Runa",             tb:"Emelec",                date:"2026-07-23"}
   ]
 };
 
