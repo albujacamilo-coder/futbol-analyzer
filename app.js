@@ -4211,9 +4211,9 @@ function showLeagueTeamProfile(name, cfg){
 
   const overlay = document.createElement('div');
   overlay.id = cfg.modalId;
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = html;
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto';
   overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
+  overlay.innerHTML = html;
   document.body.appendChild(overlay);
 
   window['_LEAGUE_CFG_'+cfg.modalId] = cfg;
