@@ -4892,7 +4892,13 @@ function ligamxBayesUpd(){
 function ligamxXgCalc(ta, tb, u){
   const sa = u[ta] ?? LIGAMX_STR[ta], sb = u[tb] ?? LIGAMX_STR[tb];
   const da = LIGAMX_TD[ta], db = LIGAMX_TD[tb], af = ap(sa, sb);
-  const gfA = da.gf/da.pj, gaA = da.ga/da.pj, gfB = db.gf/db.pj, gaB = db.ga/db.pj;
+  let gfA = da.gf/da.pj, gaA = da.ga/da.pj, gfB = db.gf/db.pj, gaB = db.ga/db.pj;
+  // Mismo criterio que el descuento de fuerza: un equipo recién ascendido no puede
+  // aparecer como mejor ataque/defensa que el promedio de la liga solo por haber
+  // dominado en Segunda — se limita a, como mucho, un nivel modesto de Primera.
+  const LIGAMX_AVG_GF = 1.35, LIGAMX_AVG_GA = 1.35;
+  if(da.promoted){ gfA = Math.min(gfA, LIGAMX_AVG_GF*0.85); gaA = Math.max(gaA, LIGAMX_AVG_GA*1.15); }
+  if(db.promoted){ gfB = Math.min(gfB, LIGAMX_AVG_GF*0.85); gaB = Math.max(gaB, LIGAMX_AVG_GA*1.15); }
   const la = Math.max(BASE*(gfA/1.3)*(gaB/1.3)*(1+0.3*(sa-sb))*af, 0.3);
   const lb = Math.max(BASE*(gfB/1.3)*(gaA/1.3)*(1+0.3*(sb-sa))*af, 0.3);
   return [la, lb];
