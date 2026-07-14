@@ -4810,6 +4810,39 @@ const LIGAMX_FIXTURES = {
     {ta:"Chivas",     tb:"Toluca",    date:"2026-07-18"},
     {ta:"Monterrey",  tb:"Santos",    date:"2026-07-18"},
     {ta:"Querétaro",  tb:"América",   date:"2026-07-18"}
+  ],
+  "Jornada 2": [
+    {ta:"Toluca",     tb:"Pumas",     date:"2026-07-21"},
+    {ta:"Cruz Azul",  tb:"Puebla",    date:"2026-07-21"},
+    {ta:"Tigres",     tb:"Atlético San Luis", date:"2026-07-24"},
+    {ta:"Atlante",    tb:"América",   date:"2026-07-24"},
+    {ta:"Tijuana",    tb:"León",      date:"2026-07-24"},
+    {ta:"Chivas",     tb:"FC Juárez", date:"2026-07-25"},
+    {ta:"Santos",     tb:"Atlas",     date:"2026-07-25"},
+    {ta:"Necaxa",     tb:"Monterrey", date:"2026-07-26"},
+    {ta:"Pachuca",    tb:"Querétaro", date:"2026-07-26"}
+  ],
+  "Jornada 3": [
+    {ta:"Atlético San Luis", tb:"Tijuana", date:"2026-07-31"},
+    {ta:"Puebla",     tb:"Chivas",    date:"2026-07-31"},
+    {ta:"FC Juárez",  tb:"Pumas",     date:"2026-07-31"},
+    {ta:"Querétaro",  tb:"Tigres",    date:"2026-08-01"},
+    {ta:"Atlas",      tb:"Monterrey", date:"2026-08-01"},
+    {ta:"León",       tb:"Pachuca",   date:"2026-08-01"},
+    {ta:"Cruz Azul",  tb:"Atlante",   date:"2026-08-01"},
+    {ta:"América",    tb:"Santos",    date:"2026-08-02"},
+    {ta:"Toluca",     tb:"Necaxa",    date:"2026-08-02"}
+  ],
+  "Jornada 4": [
+    {ta:"Atlante",    tb:"Toluca",    date:"2026-08-15"},
+    {ta:"Monterrey",  tb:"FC Juárez", date:"2026-08-15"},
+    {ta:"Atlas",      tb:"Tigres",    date:"2026-08-15"},
+    {ta:"Pumas",      tb:"Querétaro", date:"2026-08-16"},
+    {ta:"América",    tb:"Atlético San Luis", date:"2026-08-16"},
+    {ta:"Santos",     tb:"Chivas",    date:"2026-08-16"},
+    {ta:"Tijuana",    tb:"Cruz Azul", date:"2026-08-16"},
+    {ta:"Necaxa",     tb:"León",      date:"2026-08-17"},
+    {ta:"Pachuca",    tb:"Puebla",    date:"2026-08-17"}
   ]
 };
 
@@ -5130,9 +5163,9 @@ function ligamxOuTeamHtml(name, pScore, p15, p25){
   return '<div class="ou-team-block">'
     +'<div class="ou-team-name">'+name.split(' ')[0]+'</div>'
     +'<table class="ou-team-table"><thead><tr><th>Línea</th><th>Over</th><th>Under</th></tr></thead><tbody>'
-    +'<tr><td><strong>0.5</strong></td><td><strong>'+Math.round(pScore*100)+'%</strong></td><td><strong>'+Math.round((1-pScore)*100)+'%</strong></td></tr>'
-    +'<tr><td><strong>1.5</strong></td><td><strong>'+Math.round(p15*100)+'%</strong></td><td><strong>'+Math.round((1-p15)*100)+'%</strong></td></tr>'
-    +'<tr><td><strong>2.5</strong></td><td><strong>'+Math.round(p25*100)+'%</strong></td><td><strong>'+Math.round((1-p25)*100)+'%</strong></td></tr>'
+    +'<tr class="'+(pScore>=0.5?'ou-tr-hi':'')+'"><td><strong>0.5</strong></td><td class="'+(pScore>=0.5?'td-hi-g':'')+'"><strong>'+Math.round(pScore*100)+'%</strong></td><td class="'+((1-pScore)>=0.5?'td-hi-r':'')+'"><strong>'+Math.round((1-pScore)*100)+'%</strong></td></tr>'
+    +'<tr class="'+(p15>=0.5?'ou-tr-hi':'')+'"><td><strong>1.5</strong></td><td class="'+(p15>=0.5?'td-hi-g':'')+'"><strong>'+Math.round(p15*100)+'%</strong></td><td class="'+((1-p15)>=0.5?'td-hi-r':'')+'"><strong>'+Math.round((1-p15)*100)+'%</strong></td></tr>'
+    +'<tr class="'+(p25>=0.4?'ou-tr-hi':'')+'"><td><strong>2.5</strong></td><td class="'+(p25>=0.4?'td-hi-g':'')+'"><strong>'+Math.round(p25*100)+'%</strong></td><td class="'+((1-p25)>=0.6?'td-hi-r':'')+'"><strong>'+Math.round((1-p25)*100)+'%</strong></td></tr>'
     +'</tbody></table></div>';
 }
 function ligamxFormDots(form){
