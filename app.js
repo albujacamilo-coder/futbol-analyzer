@@ -4048,8 +4048,220 @@ function ligaRenderStandings(){
   cont.innerHTML = html;
 }
 
+// ── PERFIL DE EQUIPO + COMPARADOR (genérico, compartido por las 3 ligas) ────
+// En vez de repetir esta lógica 3 veces (LigaPro/Liga MX/Brasileirão), se
+// escribe una sola vez y cada liga le pasa su propia config (datos, tabla,
+// funciones de cálculo) — así no hay riesgo de que se mezclen entre sí.
+function showLeagueTeamProfile(name, cfg){
+  if(!IS_PREMIUM){ showPremiumModal(); return; }
+  const existing = document.getElementById(cfg.modalId);
+  if(existing) existing.remove();
+
+  const standings = cfg.calcStandingsFn();
+  const pos = standings.findIndex(r=>r.name===name);
+  const row = standings[pos];
+  const u = cfg.strFn();
+  const form = cfg.teamFormFn(name);
+
+  let xgFor=0, xgAg=0, n=0;
+  cfg.TEAMS.forEach(opp=>{
+    if(opp===name) return;
+    const a = cfg.matchAnalFn(name, opp, u);
+    xgFor += a.la; xgAg += a.lb; n++;
+  });
+  const avgXgFor = n? +(xgFor/n).toFixed(2):0;
+  const avgXgAg = n? +(xgAg/n).toFixed(2):0;
+
+  const cFavor = cfg.cornerFavor ? (cfg.cornerFavor[name] ?? null) : null;
+  const cContra = cfg.cornerContra ? (cfg.cornerContra[name] ?? null) : null;
+
+  function formDot(r){
+    const bg=r==='W'?'#d4edda':r==='D'?'#e8e8e8':'#fde8e8';
+    const col=r==='W'?'#1a5e34':r==='D'?'#555':'#c00';
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${bg};color:${col};font-size:10px;font-weight:700">${r}</span>`;
+  }
+
+  const dg = row.gf - row.ga;
+  const safeId = name.replace(/[\s\.]/g,'_');
+  const teamOptions = cfg.TEAMS.filter(t=>t!==name).map(t=>`<option value="${t}">${t}</option>`).join('');
+
+  const html = `<div class="modal-box" style="max-width:480px">
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-title">${name}</div>
+        <div class="modal-sub">${cfg.label} · Posición #${pos+1} · ${row.pts} pts</div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('${cfg.modalId}').remove()">&#x2715;</button>
+    </div>
+
+    <div style="display:flex;border-bottom:1px solid #e0e0e0;background:#fafafa">
+      <button id="${cfg.modalId}-tab-perfil" onclick="switchLeagueProfileTab('${cfg.modalId}','perfil')"
+        style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid #111;color:#111;font-family:inherit">📊 Perfil</button>
+      <button id="${cfg.modalId}-tab-comparar" onclick="switchLeagueProfileTab('${cfg.modalId}','comparar')"
+        style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit">⚡ Comparar</button>
+    </div>
+
+    <div id="${cfg.modalId}-content-perfil" style="padding:16px">
+      <div class="modal-section">
+        <div class="modal-sec-title">Temporada actual</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center">
+          <div><div style="font-size:18px;font-weight:700">${row.pj}</div><div style="font-size:10px;color:#888">PJ</div></div>
+          <div><div style="font-size:18px;font-weight:700">${row.pts}</div><div style="font-size:10px;color:#888">Pts</div></div>
+          <div><div style="font-size:18px;font-weight:700">${row.gf}</div><div style="font-size:10px;color:#888">GF</div></div>
+          <div><div style="font-size:18px;font-weight:700">${row.ga}</div><div style="font-size:10px;color:#888">GA</div></div>
+          <div><div style="font-size:18px;font-weight:700;color:${dg>=0?'#1a5e34':'#c00'}">${dg>0?'+':''}${dg}</div><div style="font-size:10px;color:#888">DG</div></div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-sec-title">Forma reciente</div>
+        <div style="display:flex;gap:6px">
+          ${form.length ? form.map(f=>formDot(f.result)).join('') : '<span style="font-size:11px;color:#aaa">Sin partidos registrados aún</span>'}
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-sec-title">Promedio del modelo (vs. resto de la liga)</div>
+        <div style="display:flex;gap:16px">
+          <div style="flex:1;text-align:center;background:#f7f7f7;border-radius:10px;padding:10px">
+            <div style="font-size:20px;font-weight:700">${avgXgFor}</div>
+            <div style="font-size:10px;color:#888">xG a favor</div>
+          </div>
+          <div style="flex:1;text-align:center;background:#f7f7f7;border-radius:10px;padding:10px">
+            <div style="font-size:20px;font-weight:700">${avgXgAg}</div>
+            <div style="font-size:10px;color:#888">xG en contra</div>
+          </div>
+        </div>
+      </div>
+
+      ${cFavor!==null ? `<div class="modal-section">
+        <div class="modal-sec-title">Corners (temporada)</div>
+        <div style="display:flex;gap:16px">
+          <div style="flex:1;text-align:center;background:#f7f7f7;border-radius:10px;padding:10px">
+            <div style="font-size:20px;font-weight:700">${cFavor}</div>
+            <div style="font-size:10px;color:#888">A favor</div>
+          </div>
+          <div style="flex:1;text-align:center;background:#f7f7f7;border-radius:10px;padding:10px">
+            <div style="font-size:20px;font-weight:700">${cContra}</div>
+            <div style="font-size:10px;color:#888">En contra</div>
+          </div>
+        </div>
+      </div>` : ''}
+    </div>
+
+    <div id="${cfg.modalId}-content-comparar" style="padding:16px;display:none">
+      <div class="modal-section">
+        <div class="modal-sec-title">Comparar con...</div>
+        <select id="${cfg.modalId}-opp-select" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;font-family:inherit;font-size:13px" onchange="renderLeagueComparison('${cfg.modalId}')">
+          <option value="">Selecciona un rival...</option>
+          ${teamOptions}
+        </select>
+      </div>
+      <div id="${cfg.modalId}-comparison-result"></div>
+    </div>
+  </div>`;
+
+  const overlay = document.createElement('div');
+  overlay.id = cfg.modalId;
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = html;
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+
+  window['_LEAGUE_CFG_'+cfg.modalId] = cfg;
+  window['_LEAGUE_TEAM_'+cfg.modalId] = name;
+}
+
+function switchLeagueProfileTab(modalId, tab){
+  const perfilBtn = document.getElementById(modalId+'-tab-perfil');
+  const compararBtn = document.getElementById(modalId+'-tab-comparar');
+  const perfilContent = document.getElementById(modalId+'-content-perfil');
+  const compararContent = document.getElementById(modalId+'-content-comparar');
+  if(!perfilBtn||!compararBtn||!perfilContent||!compararContent) return;
+  if(tab==='perfil'){
+    perfilContent.style.display=''; compararContent.style.display='none';
+    perfilBtn.style.borderBottomColor='#111'; perfilBtn.style.color='#111'; perfilBtn.style.fontWeight='600';
+    compararBtn.style.borderBottomColor='transparent'; compararBtn.style.color='#888'; compararBtn.style.fontWeight='500';
+  } else {
+    perfilContent.style.display='none'; compararContent.style.display='';
+    compararBtn.style.borderBottomColor='#111'; compararBtn.style.color='#111'; compararBtn.style.fontWeight='600';
+    perfilBtn.style.borderBottomColor='transparent'; perfilBtn.style.color='#888'; perfilBtn.style.fontWeight='500';
+  }
+}
+
+function renderLeagueComparison(modalId){
+  const cfg = window['_LEAGUE_CFG_'+modalId];
+  const nameA = window['_LEAGUE_TEAM_'+modalId];
+  const select = document.getElementById(modalId+'-opp-select');
+  const nameB = select.value;
+  const resultCont = document.getElementById(modalId+'-comparison-result');
+  if(!nameB){ resultCont.innerHTML=''; return; }
+
+  const standings = cfg.calcStandingsFn();
+  const rowA = standings.find(r=>r.name===nameA);
+  const rowB = standings.find(r=>r.name===nameB);
+  const posA = standings.findIndex(r=>r.name===nameA)+1;
+  const posB = standings.findIndex(r=>r.name===nameB)+1;
+
+  const u = cfg.strFn();
+  const a = cfg.matchAnalFn(nameA, nameB, u);
+  const [ca, cb] = cfg.cornerCalcFn ? cfg.cornerCalcFn(nameA, nameB) : [null,null];
+
+  function row(label, valA, valB, higherIsBetterA){
+    let hiA=false, hiB=false;
+    if(higherIsBetterA!==undefined){
+      hiA = higherIsBetterA ? valA>=valB : valA<=valB;
+      hiB = higherIsBetterA ? valB>valA : valB<valA;
+    }
+    return `<tr>
+      <td style="text-align:right;padding:6px 8px;font-weight:${hiA?'700':'400'};color:${hiA?'#1a5e34':'#333'}">${valA}</td>
+      <td style="text-align:center;padding:6px 8px;font-size:11px;color:#888">${label}</td>
+      <td style="text-align:left;padding:6px 8px;font-weight:${hiB?'700':'400'};color:${hiB?'#1a5e34':'#333'}">${valB}</td>
+    </tr>`;
+  }
+
+  let html = `<div class="modal-section">
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <div style="font-weight:700">${nameA}</div>
+      <div style="font-weight:700">${nameB}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      ${row('Posición', '#'+posA, '#'+posB)}
+      ${row('Puntos', rowA.pts, rowB.pts, true)}
+      ${row('GF', rowA.gf, rowB.gf, true)}
+      ${row('GA', rowA.ga, rowB.ga, false)}
+      ${row('xG estimado', a.la, a.lb, true)}
+      ${ca!==null?row('Corners esp.', ca, cb, true):''}
+    </table>
+  </div>
+  <div class="modal-section">
+    <div class="modal-sec-title">Si jugaran hoy</div>
+    <div style="display:flex;gap:8px">
+      <div style="flex:1;text-align:center;padding:10px;border-radius:10px;background:${a.pw_a>=a.pw_b&&a.pw_a>=a.pd?'#d4edda':'#f0f0f0'}">
+        <div style="font-size:20px;font-weight:700">${Math.round(a.pw_a*100)}%</div>
+        <div style="font-size:10px">Gana ${nameA.split(' ')[0]}</div>
+      </div>
+      <div style="flex:1;text-align:center;padding:10px;border-radius:10px;background:#f0f0f0">
+        <div style="font-size:20px;font-weight:700">${Math.round(a.pd*100)}%</div>
+        <div style="font-size:10px">Empate</div>
+      </div>
+      <div style="flex:1;text-align:center;padding:10px;border-radius:10px;background:${a.pw_b>a.pw_a&&a.pw_b>=a.pd?'#d4edda':'#f0f0f0'}">
+        <div style="font-size:20px;font-weight:700">${Math.round(a.pw_b*100)}%</div>
+        <div style="font-size:10px">Gana ${nameB.split(' ')[0]}</div>
+      </div>
+    </div>
+  </div>`;
+  resultCont.innerHTML = html;
+}
+
 function ligaOpenTeamProfile(name){
-  alert(name + '\n\nPerfil detallado — próximamente en una siguiente iteración.');
+  showLeagueTeamProfile(name, {
+    label: 'LigaPro Ecuador', modalId: 'liga-team-modal',
+    TEAMS: LIGA_TEAMS, calcStandingsFn: ligaCalcStandings,
+    strFn: ligaBayesUpd, matchAnalFn: ligaMatchAnal,
+    cornerCalcFn: ligaCornerCalc, teamFormFn: ligaTeamForm,
+    cornerFavor: LIGA_CORNER_FAVOR, cornerContra: LIGA_CORNER_CONTRA
+  });
 }
 
 // ── CONSTRUIR LISTA DE PARTIDOS CON ANÁLISIS ────────────────────────────────
@@ -5023,7 +5235,13 @@ function ligamxRenderStandings(){
 }
 
 function ligamxOpenTeamProfile(name){
-  alert(name + '\n\nPerfil detallado — próximamente en una siguiente iteración.');
+  showLeagueTeamProfile(name, {
+    label: 'Liga MX · Apertura 2026', modalId: 'ligamx-team-modal',
+    TEAMS: LIGAMX_TEAMS, calcStandingsFn: ligamxCalcStandings,
+    strFn: ligamxBayesUpd, matchAnalFn: ligamxMatchAnal,
+    cornerCalcFn: ligamxCornerCalc, teamFormFn: ligamxTeamForm,
+    cornerFavor: LIGAMX_CORNER_FAVOR, cornerContra: LIGAMX_CORNER_CONTRA
+  });
 }
 
 function ligamxBuildPD(){
@@ -5977,7 +6195,13 @@ function brasilRenderStandings(){
 }
 
 function brasilOpenTeamProfile(name){
-  alert(name + '\n\nPerfil detallado — próximamente en una siguiente iteración.');
+  showLeagueTeamProfile(name, {
+    label: 'Brasileirão Serie A 2026', modalId: 'brasil-team-modal',
+    TEAMS: BRASIL_TEAMS, calcStandingsFn: brasilCalcStandings,
+    strFn: brasilBayesUpd, matchAnalFn: brasilMatchAnal,
+    cornerCalcFn: brasilCornerCalc, teamFormFn: brasilTeamForm,
+    cornerFavor: BRASIL_CORNER_FAVOR, cornerContra: BRASIL_CORNER_CONTRA
+  });
 }
 
 function brasilBuildPD(){
