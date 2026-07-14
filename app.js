@@ -4061,7 +4061,43 @@ function showLeagueTeamProfile(name, cfg){
   const pos = standings.findIndex(r=>r.name===name);
   const row = standings[pos];
   const u = cfg.strFn();
-  const form = cfg.teamFormFn(name);
+
+  // Recorrer TODOS los partidos ya ingresados en la app (no solo los últimos 3)
+  // para armar el rendimiento completo — esto se recalcula cada vez que se abre
+  // el perfil, así que se actualiza solo conforme se van cargando resultados.
+  const played = [];
+  Object.values(cfg.FIXTURES).forEach(matches=>{
+    matches.forEach(m=>{
+      if(m.ta!==name && m.tb!==name) return;
+      const real = cfg.getResultFn(m.ta, m.tb);
+      if(!real) return;
+      const isHome = m.ta===name;
+      const myG = isHome?real.ga:real.gb, oppG = isHome?real.gb:real.ga;
+      const opp = isHome?m.tb:m.ta;
+      const result = myG>oppG?'W':(myG===oppG?'D':'L');
+      played.push({date:m.date, opp, myG, oppG, result});
+    });
+  });
+  played.sort((a,b)=>a.date.localeCompare(b.date));
+  const wins = played.filter(p=>p.result==='W').length;
+  const draws = played.filter(p=>p.result==='D').length;
+  const losses = played.filter(p=>p.result==='L').length;
+  const last5 = played.slice(-5);
+
+  // Próximo partido pendiente (el primero sin resultado, en orden de fecha)
+  let nextMatch = null;
+  const allFx = [];
+  Object.values(cfg.FIXTURES).forEach(matches=>matches.forEach(m=>allFx.push(m)));
+  allFx.sort((a,b)=>a.date.localeCompare(b.date));
+  for(const m of allFx){
+    if(m.ta!==name && m.tb!==name) continue;
+    if(cfg.getResultFn(m.ta, m.tb)) continue;
+    const opp = m.ta===name ? m.tb : m.ta;
+    const a = cfg.matchAnalFn(m.ta, m.tb, u);
+    const myWinP = m.ta===name ? a.pw_a : a.pw_b;
+    nextMatch = {opp, myWinP: Math.round(myWinP*100), date:m.date};
+    break;
+  }
 
   let xgFor=0, xgAg=0, n=0;
   cfg.TEAMS.forEach(opp=>{
@@ -4071,17 +4107,16 @@ function showLeagueTeamProfile(name, cfg){
   });
   const avgXgFor = n? +(xgFor/n).toFixed(2):0;
   const avgXgAg = n? +(xgAg/n).toFixed(2):0;
-
   const cFavor = cfg.cornerFavor ? (cfg.cornerFavor[name] ?? null) : null;
-  const cContra = cfg.cornerContra ? (cfg.cornerContra[name] ?? null) : null;
 
   function formDot(r){
     const bg=r==='W'?'#d4edda':r==='D'?'#e8e8e8':'#fde8e8';
     const col=r==='W'?'#1a5e34':r==='D'?'#555':'#c00';
-    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${bg};color:${col};font-size:10px;font-weight:700">${r}</span>`;
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${bg};color:${col};font-size:12px;font-weight:700">${r}</span>`;
   }
 
   const dg = row.gf - row.ga;
+  const zone = cfg.zoneFn ? cfg.zoneFn(pos, standings.length) : null;
   const safeId = name.replace(/[\s\.]/g,'_');
   const teamOptions = cfg.TEAMS.filter(t=>t!==name).map(t=>`<option value="${t}">${t}</option>`).join('');
 
@@ -4089,7 +4124,7 @@ function showLeagueTeamProfile(name, cfg){
     <div class="modal-hdr">
       <div>
         <div class="modal-title">${name}</div>
-        <div class="modal-sub">${cfg.label} · Posición #${pos+1} · ${row.pts} pts</div>
+        <div class="modal-sub">${cfg.label} · Fuerza del modelo: ${(u[name]||0).toFixed(3)}</div>
       </div>
       <button class="modal-close" onclick="document.getElementById('${cfg.modalId}').remove()">&#x2715;</button>
     </div>
@@ -4102,51 +4137,64 @@ function showLeagueTeamProfile(name, cfg){
     </div>
 
     <div id="${cfg.modalId}-content-perfil" style="padding:16px">
+
       <div class="modal-section">
-        <div class="modal-sec-title">Temporada actual</div>
-        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center">
-          <div><div style="font-size:18px;font-weight:700">${row.pj}</div><div style="font-size:10px;color:#888">PJ</div></div>
-          <div><div style="font-size:18px;font-weight:700">${row.pts}</div><div style="font-size:10px;color:#888">Pts</div></div>
-          <div><div style="font-size:18px;font-weight:700">${row.gf}</div><div style="font-size:10px;color:#888">GF</div></div>
-          <div><div style="font-size:18px;font-weight:700">${row.ga}</div><div style="font-size:10px;color:#888">GA</div></div>
-          <div><div style="font-size:18px;font-weight:700;color:${dg>=0?'#1a5e34':'#c00'}">${dg>0?'+':''}${dg}</div><div style="font-size:10px;color:#888">DG</div></div>
+        <div class="modal-sec-title">Posición en la tabla</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#f7f7f7;border-radius:10px;padding:12px 14px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="font-size:22px;font-weight:800">${pos+1}°</div>
+            <div style="font-size:12px;color:#555">${row.pts} pts · ${row.pj} PJ · ${row.gf} GF · ${row.ga} GA · DG${dg>0?'+':''}${dg}</div>
+          </div>
+          ${zone ? `<span style="font-size:10px;font-weight:600;background:${zone.color==='green'?'#d4edda':zone.color==='red'?'#fde8e8':'#e8f4fd'};color:${zone.color==='green'?'#1a5e34':zone.color==='red'?'#c00':'#1565c0'};padding:4px 10px;border-radius:8px;white-space:nowrap">${zone.label}</span>` : ''}
         </div>
       </div>
 
       <div class="modal-section">
-        <div class="modal-sec-title">Forma reciente</div>
-        <div style="display:flex;gap:6px">
-          ${form.length ? form.map(f=>formDot(f.result)).join('') : '<span style="font-size:11px;color:#aaa">Sin partidos registrados aún</span>'}
+        <div class="modal-sec-title">Rendimiento (partidos registrados en la app)</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
+          <div style="background:#f7f7f7;border-radius:10px;padding:10px 4px">
+            <div style="font-size:18px;font-weight:700">${played.length}</div><div style="font-size:10px;color:#888">Jugados</div>
+          </div>
+          <div style="background:#d4edda;border-radius:10px;padding:10px 4px">
+            <div style="font-size:18px;font-weight:700;color:#1a5e34">${wins}</div><div style="font-size:10px;color:#1a5e34">Victorias</div>
+          </div>
+          <div style="background:#f0f0f0;border-radius:10px;padding:10px 4px">
+            <div style="font-size:18px;font-weight:700">${draws}</div><div style="font-size:10px;color:#888">Empates</div>
+          </div>
+          <div style="background:#fde8e8;border-radius:10px;padding:10px 4px">
+            <div style="font-size:18px;font-weight:700;color:#c00">${losses}</div><div style="font-size:10px;color:#c00">Derrotas</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          ${last5.length ? last5.map(f=>formDot(f.result)).join('') : '<span style="font-size:11px;color:#aaa">Sin partidos registrados aún</span>'}
         </div>
       </div>
 
       <div class="modal-section">
-        <div class="modal-sec-title">Promedio del modelo (vs. resto de la liga)</div>
-        <div style="display:flex;gap:16px">
-          <div style="flex:1;text-align:center;background:#f7f7f7;border-radius:10px;padding:10px">
+        <div class="modal-sec-title">Análisis del modelo</div>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1;text-align:center;background:#f7f7f7;border-radius:10px;padding:10px 6px">
             <div style="font-size:20px;font-weight:700">${avgXgFor}</div>
-            <div style="font-size:10px;color:#888">xG a favor</div>
+            <div style="font-size:10px;color:#888">xG generado</div>
           </div>
-          <div style="flex:1;text-align:center;background:#f7f7f7;border-radius:10px;padding:10px">
+          <div style="flex:1;text-align:center;background:#f7f7f7;border-radius:10px;padding:10px 6px">
             <div style="font-size:20px;font-weight:700">${avgXgAg}</div>
-            <div style="font-size:10px;color:#888">xG en contra</div>
+            <div style="font-size:10px;color:#888">xG concedido</div>
           </div>
+          ${cFavor!==null?`<div style="flex:1;text-align:center;background:#f7f7f7;border-radius:10px;padding:10px 6px">
+            <div style="font-size:20px;font-weight:700">${cFavor}</div>
+            <div style="font-size:10px;color:#888">Índice corners</div>
+          </div>`:''}
         </div>
       </div>
 
-      ${cFavor!==null ? `<div class="modal-section">
-        <div class="modal-sec-title">Corners (temporada)</div>
-        <div style="display:flex;gap:16px">
-          <div style="flex:1;text-align:center;background:#f7f7f7;border-radius:10px;padding:10px">
-            <div style="font-size:20px;font-weight:700">${cFavor}</div>
-            <div style="font-size:10px;color:#888">A favor</div>
-          </div>
-          <div style="flex:1;text-align:center;background:#f7f7f7;border-radius:10px;padding:10px">
-            <div style="font-size:20px;font-weight:700">${cContra}</div>
-            <div style="font-size:10px;color:#888">En contra</div>
-          </div>
+      ${nextMatch ? `<div class="modal-section">
+        <div class="modal-sec-title">Próximo partido</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#f7f7f7;border-radius:10px;padding:12px 14px;cursor:pointer" onclick="document.getElementById('${cfg.modalId}').remove(); ${cfg.openProfileFnName}('${nextMatch.opp}')">
+          <div style="font-size:13px;font-weight:600">${name} <span style="color:#aaa;font-weight:400">vs</span> ${nextMatch.opp}</div>
+          <div style="font-size:13px;font-weight:700;color:#1a5e34">${nextMatch.myWinP}% de ganar</div>
         </div>
-      </div>` : ''}
+      </div>` : `<div class="modal-section"><div style="font-size:11px;color:#aaa">Sin próximo partido pendiente cargado todavía.</div></div>`}
     </div>
 
     <div id="${cfg.modalId}-content-comparar" style="padding:16px;display:none">
@@ -4260,7 +4308,14 @@ function ligaOpenTeamProfile(name){
     TEAMS: LIGA_TEAMS, calcStandingsFn: ligaCalcStandings,
     strFn: ligaBayesUpd, matchAnalFn: ligaMatchAnal,
     cornerCalcFn: ligaCornerCalc, teamFormFn: ligaTeamForm,
-    cornerFavor: LIGA_CORNER_FAVOR, cornerContra: LIGA_CORNER_CONTRA
+    cornerFavor: LIGA_CORNER_FAVOR, cornerContra: LIGA_CORNER_CONTRA,
+    FIXTURES: LIGA_FIXTURES, getResultFn: ligaGetResult,
+    openProfileFnName: 'ligaOpenTeamProfile',
+    zoneFn: (pos)=>{
+      if(pos<6) return {label:'Hexagonal título', color:'green'};
+      if(pos<10) return {label:'Cuadrangular', color:'blue'};
+      return {label:'Hexagonal descenso', color:'red'};
+    }
   });
 }
 
@@ -5240,7 +5295,10 @@ function ligamxOpenTeamProfile(name){
     TEAMS: LIGAMX_TEAMS, calcStandingsFn: ligamxCalcStandings,
     strFn: ligamxBayesUpd, matchAnalFn: ligamxMatchAnal,
     cornerCalcFn: ligamxCornerCalc, teamFormFn: ligamxTeamForm,
-    cornerFavor: LIGAMX_CORNER_FAVOR, cornerContra: LIGAMX_CORNER_CONTRA
+    cornerFavor: LIGAMX_CORNER_FAVOR, cornerContra: LIGAMX_CORNER_CONTRA,
+    FIXTURES: LIGAMX_FIXTURES, getResultFn: ligamxGetResult,
+    openProfileFnName: 'ligamxOpenTeamProfile',
+    zoneFn: (pos)=> pos<12 ? {label:'Zona de Liguilla', color:'green'} : null
   });
 }
 
@@ -6200,7 +6258,15 @@ function brasilOpenTeamProfile(name){
     TEAMS: BRASIL_TEAMS, calcStandingsFn: brasilCalcStandings,
     strFn: brasilBayesUpd, matchAnalFn: brasilMatchAnal,
     cornerCalcFn: brasilCornerCalc, teamFormFn: brasilTeamForm,
-    cornerFavor: BRASIL_CORNER_FAVOR, cornerContra: BRASIL_CORNER_CONTRA
+    cornerFavor: BRASIL_CORNER_FAVOR, cornerContra: BRASIL_CORNER_CONTRA,
+    FIXTURES: BRASIL_FIXTURES, getResultFn: brasilGetResult,
+    openProfileFnName: 'brasilOpenTeamProfile',
+    zoneFn: (pos)=>{
+      if(pos<4) return {label:'Libertadores', color:'green'};
+      if(pos<6) return {label:'Sudamericana', color:'blue'};
+      if(pos>=16) return {label:'Descenso', color:'red'};
+      return null;
+    }
   });
 }
 
