@@ -6,16 +6,13 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const ADMIN_SECRET = 'futbol2026admin';
 const ADMIN_LS_KEY = 'fsp_is_admin';
 
-// Si entra con el link de siempre (?admin=...), se activa Y se recuerda en este
-// dispositivo — así, la app instalada (que no tiene barra de direcciones para
-// volver a escribir el código) sigue reconociéndote como admin la próxima vez.
-const URL_ADMIN_MATCH = new URLSearchParams(window.location.search).get('admin') === ADMIN_SECRET;
-if (URL_ADMIN_MATCH) {
-  try { localStorage.setItem(ADMIN_LS_KEY, '1'); } catch(e) {}
-}
-const IS_ADMIN = URL_ADMIN_MATCH || (function(){
-  try { return localStorage.getItem(ADMIN_LS_KEY) === '1'; } catch(e) { return false; }
-})();
+// Solo el link con ?admin=... activa el modo admin — sin persistencia.
+const IS_ADMIN = new URLSearchParams(window.location.search).get('admin') === ADMIN_SECRET;
+
+// Limpieza: borrar cualquier marca de admin que haya quedado guardada por
+// una versión anterior de este archivo, para que ningún navegador se quede
+// "atascado" en modo admin sin querer.
+try { localStorage.removeItem(ADMIN_LS_KEY); } catch(e) {}
 
 // ── SISTEMA DE ACCESO PREMIUM ─────────────────────────────────────────────────
 // IS_PREMIUM: true si admin, si tiene código válido guardado, o si es modo preview
