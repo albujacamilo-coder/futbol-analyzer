@@ -6442,7 +6442,7 @@ function brasilRenderAdminInput(){
   if(!cont) return;
   const fechaKeys = Object.keys(BRASIL_FIXTURES);
   let html = `<div style="background:#fffbea;border:1.5px solid #f5c518;border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:#856404">
-    💡 Liga MX no tiene sincronización automática — el calendario se actualiza a mano cada semana, e ingresa cada resultado apenas se juegue.
+    💡 Brasileirão no tiene sincronización automática — el calendario se actualiza a mano cada semana, e ingresa cada resultado apenas se juegue.
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
     <button onclick="brasilSaveAll()" id="brasil-save-all-btn" style="padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500;font-size:13px">💾 Guardar todos los resultados</button>
@@ -7386,7 +7386,7 @@ function mlsRenderAdminInput(){
   if(!cont) return;
   const fechaKeys = Object.keys(MLS_FIXTURES);
   let html = `<div style="background:#fffbea;border:1.5px solid #f5c518;border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:#856404">
-    💡 Liga MX no tiene sincronización automática — el calendario se actualiza a mano cada semana, e ingresa cada resultado apenas se juegue.
+    💡 MLS no tiene sincronización automática — el calendario se actualiza a mano cada semana, e ingresa cada resultado apenas se juegue.
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
     <button onclick="mlsSaveAll()" id="mls-save-all-btn" style="padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500;font-size:13px">💾 Guardar todos los resultados</button>
