@@ -5739,6 +5739,9 @@ const BRASIL_CARD_IDX = {
 };
 
 const BRASIL_FIXTURES = {
+  "Partido aplazado": [
+    {ta:"Bahia", tb:"Chapecoense", date:"2026-07-17"}
+  ],
   "Rodada 19": [
     {ta:"Botafogo",     tb:"Santos",              date:"2026-07-16"},
     {ta:"Vitória",      tb:"Vasco da Gama",       date:"2026-07-16"},
