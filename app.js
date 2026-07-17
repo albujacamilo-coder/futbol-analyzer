@@ -6719,6 +6719,9 @@ const MLS_CARD_IDX = {
 // se reparten casi día por día — así que se etiqueta directo por fecha.
 const MLS_FIXTURES = {
   "17 jul": [
+    {ta:"Seattle Sounders", tb:"Portland Timbers", date:"2026-07-17"},
+    {ta:"St. Louis City SC", tb:"Sporting Kansas City", date:"2026-07-17"},
+    {ta:"CF Montréal",    tb:"Toronto FC",       date:"2026-07-17"},
     {ta:"Nashville SC",   tb:"Atlanta United",  date:"2026-07-17"},
     {ta:"LA Galaxy",      tb:"LAFC",            date:"2026-07-17"}
   ],
