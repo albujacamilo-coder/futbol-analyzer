@@ -3384,6 +3384,7 @@ const COMPETITION_NAMES = {
   'ligapro':     '🇪🇨 LigaPro Ecuador',
   'ligamx':      '🇲🇽 Liga MX',
   'brasileirao': '🇧🇷 Brasileirão',
+  'mls':         '🇺🇸 MLS',
   'premier':     '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League',
   'laliga':      '🇪🇸 La Liga',
   'bundesliga':  '🇩🇪 Bundesliga',
@@ -3410,7 +3411,8 @@ function enterCompetition(id){
     'mundial2026': ['pcont','gcont','mcont'],
     'ligapro':     ['pcont-liga','gcont-liga','mcont-liga'],
     'ligamx':      ['pcont-ligamx','gcont-ligamx','mcont-ligamx'],
-    'brasileirao': ['pcont-brasil','gcont-brasil','mcont-brasil']
+    'brasileirao': ['pcont-brasil','gcont-brasil','mcont-brasil'],
+    'mls':         ['pcont-mls','gcont-mls','mcont-mls']
   };
   const activeIds = containerSets[id] || containerSets['mundial2026'];
   Object.values(containerSets).forEach(idsList=>{
@@ -3426,6 +3428,7 @@ function enterCompetition(id){
   if(id==='ligapro'){ ligaInitApp(); return; }
   if(id==='ligamx'){ ligamxInitApp(); return; }
   if(id==='brasileirao'){ brasilInitApp(); return; }
+  if(id==='mls'){ mlsInitApp(); return; }
   initApp();
 }
 
@@ -6623,6 +6626,947 @@ async function brasilInitApp(){
   if(hdrSub){
     if(result && result.ok){
       hdrSub.innerHTML = `✅ ${result.count} resultado(s) de Brasileirão cargados desde la nube (de ${result.totalRows} en total) · Brasileirão 2026`;
+    } else {
+      hdrSub.innerHTML = `⚠️ No se pudo cargar desde la nube (${result ? result.error : 'error desconocido'}) — mostrando solo lo guardado en este dispositivo`;
+    }
+  }
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// ── MLS — MÓDULO (no modifica nada del Mundial ni de las otras 3 ligas) ────
+// ═══════════════════════════════════════════════════════════════════════════
+const MLS_SEASON = '2026';
+
+const MLS_TEAMS = [
+  "Nashville SC","Inter Miami CF","Chicago Fire","New England Revolution",
+  "New York Red Bulls","Charlotte FC","FC Cincinnati","New York City FC",
+  "D.C. United","Columbus Crew","CF Montréal","Toronto FC","Orlando City",
+  "Atlanta United","Philadelphia Union",
+  "Vancouver Whitecaps","San Jose Earthquakes","Real Salt Lake","FC Dallas",
+  "Seattle Sounders","LAFC","Houston Dynamo","Minnesota United","LA Galaxy",
+  "St. Louis City SC","San Diego FC","Colorado Rapids","Portland Timbers",
+  "Austin FC","Sporting Kansas City"
+];
+
+// Tabla real (Eastern + Western Conference) tras la pausa por el Mundial
+const MLS_TD = {
+  "Nashville SC":            {pj:14, pts:33, gf:31, ga:11, titles:0},
+  "Inter Miami CF":          {pj:15, pts:31, gf:39, ga:28, titles:1},
+  "Chicago Fire":            {pj:14, pts:26, gf:27, ga:16, titles:1},
+  "New England Revolution":  {pj:14, pts:25, gf:22, ga:18, titles:0},
+  "New York Red Bulls":      {pj:15, pts:22, gf:25, ga:32, titles:0},
+  "Charlotte FC":            {pj:15, pts:21, gf:24, ga:23, titles:0},
+  "FC Cincinnati":           {pj:15, pts:20, gf:36, ga:37, titles:0},
+  "New York City FC":        {pj:15, pts:19, gf:25, ga:21, titles:1},
+  "D.C. United":             {pj:15, pts:18, gf:21, ga:25, titles:5},
+  "Columbus Crew":           {pj:15, pts:16, gf:21, ga:23, titles:3},
+  "CF Montréal":             {pj:15, pts:15, gf:22, ga:31, titles:0},
+  "Toronto FC":              {pj:15, pts:15, gf:22, ga:29, titles:1},
+  "Orlando City":            {pj:15, pts:14, gf:23, ga:44, titles:0},
+  "Atlanta United":          {pj:14, pts:11, gf:14, ga:23, titles:1},
+  "Philadelphia Union":      {pj:15, pts:7,  gf:18, ga:30, titles:0},
+  "Vancouver Whitecaps":     {pj:14, pts:32, gf:34, ga:12, titles:0},
+  "San Jose Earthquakes":    {pj:15, pts:32, gf:34, ga:15, titles:2},
+  "Real Salt Lake":          {pj:14, pts:26, gf:26, ga:19, titles:1},
+  "FC Dallas":               {pj:15, pts:25, gf:30, ga:22, titles:0},
+  "Seattle Sounders":        {pj:14, pts:25, gf:17, ga:11, titles:2},
+  "LAFC":                    {pj:15, pts:24, gf:24, ga:17, titles:0},
+  "Houston Dynamo":          {pj:14, pts:22, gf:19, ga:23, titles:2},
+  "Minnesota United":        {pj:15, pts:22, gf:18, ga:22, titles:0},
+  "LA Galaxy":               {pj:15, pts:20, gf:22, ga:22, titles:8},
+  "St. Louis City SC":       {pj:15, pts:19, gf:19, ga:22, titles:0},
+  "San Diego FC":            {pj:15, pts:17, gf:30, ga:27, titles:0},
+  "Colorado Rapids":         {pj:15, pts:16, gf:25, ga:24, titles:1},
+  "Portland Timbers":        {pj:15, pts:15, gf:22, ga:28, titles:1},
+  "Austin FC":               {pj:15, pts:14, gf:19, ga:31, titles:0},
+  "Sporting Kansas City":    {pj:15, pts:11, gf:16, ga:39, titles:4}
+};
+
+// Corners reales (promedio por partido, fuente: WinDrawWin, temporada 2026)
+const MLS_CORNER_FAVOR = {
+  "San Jose Earthquakes":6.9, "New York Red Bulls":6.0, "Philadelphia Union":5.7,
+  "LAFC":5.5, "St. Louis City SC":5.5, "Inter Miami CF":5.4, "Seattle Sounders":5.3,
+  "Columbus Crew":5.3, "Toronto FC":5.3, "Atlanta United":5.1, "Vancouver Whitecaps":5.0,
+  "Minnesota United":4.9, "CF Montréal":4.8, "LA Galaxy":4.6, "Colorado Rapids":4.5,
+  "San Diego FC":4.5, "Charlotte FC":4.5, "Chicago Fire":4.4, "Houston Dynamo":4.4,
+  "FC Cincinnati":4.3, "Nashville SC":4.3, "D.C. United":4.3, "FC Dallas":4.3,
+  "Austin FC":4.1, "Portland Timbers":4.0, "Real Salt Lake":4.0, "New York City FC":3.5,
+  "New England Revolution":3.4, "Orlando City":3.4, "Sporting Kansas City":3.4
+};
+const MLS_CORNER_CONTRA = {
+  "Orlando City":7.2, "Portland Timbers":6.6, "Austin FC":6.2, "Sporting Kansas City":5.7,
+  "D.C. United":5.5, "FC Dallas":5.4, "Chicago Fire":5.4, "Seattle Sounders":5.8,
+  "Toronto FC":5.3, "New England Revolution":5.3, "Minnesota United":5.2, "New York City FC":4.8,
+  "Atlanta United":4.8, "Real Salt Lake":4.7, "Colorado Rapids":4.5, "FC Cincinnati":4.5,
+  "CF Montréal":4.5, "Houston Dynamo":4.4, "Charlotte FC":4.2, "LAFC":4.2, "New York Red Bulls":4.3,
+  "Nashville SC":4.3, "St. Louis City SC":4.1, "San Diego FC":3.7, "Columbus Crew":3.7,
+  "Vancouver Whitecaps":3.2, "Inter Miami CF":3.1, "LA Galaxy":3.0, "Philadelphia Union":2.8
+};
+
+// Tarjetas reales (TA + RCx2 por partido, fuente: ESPN), convertidas a índice 1-10
+const MLS_CARD_IDX = {
+  "Colorado Rapids":7.50, "FC Cincinnati":7.01, "Inter Miami CF":7.01, "CF Montréal":6.87,
+  "Philadelphia Union":6.64, "Orlando City":6.52, "Houston Dynamo":6.47, "Chicago Fire":6.47,
+  "Charlotte FC":6.03, "San Jose Earthquakes":6.03, "FC Dallas":6.03, "Vancouver Whitecaps":5.82,
+  "Atlanta United":5.82, "San Diego FC":5.78, "LA Galaxy":5.78, "Toronto FC":5.68,
+  "St. Louis City SC":5.55, "Austin FC":5.54, "New York Red Bulls":5.54, "Real Salt Lake":5.42,
+  "D.C. United":5.41, "LAFC":5.41, "Minnesota United":5.29, "Portland Timbers":5.29,
+  "Nashville SC":5.29, "New England Revolution":5.03, "Seattle Sounders":4.72,
+  "New York City FC":4.68, "Columbus Crew":4.55, "Sporting Kansas City":4.50
+};
+
+// Calendario de la reanudación tras el Mundial (17 jul en adelante).
+// La MLS no numera "Jornada X" de forma simple como otras ligas — los partidos
+// se reparten casi día por día — así que se etiqueta directo por fecha.
+const MLS_FIXTURES = {
+  "17 jul": [
+    {ta:"Nashville SC",   tb:"Atlanta United",  date:"2026-07-17"},
+    {ta:"LA Galaxy",      tb:"LAFC",            date:"2026-07-17"}
+  ],
+  "22 jul": [
+    {ta:"Inter Miami CF", tb:"Chicago Fire",           date:"2026-07-22"},
+    {ta:"FC Cincinnati",  tb:"Vancouver Whitecaps",    date:"2026-07-22"},
+    {ta:"Columbus Crew",  tb:"New York City FC",       date:"2026-07-22"},
+    {ta:"Philadelphia Union", tb:"New York Red Bulls", date:"2026-07-22"},
+    {ta:"New England Revolution", tb:"Toronto FC",     date:"2026-07-22"},
+    {ta:"Charlotte FC",   tb:"Atlanta United",         date:"2026-07-22"},
+    {ta:"Nashville SC",   tb:"CF Montréal",            date:"2026-07-22"},
+    {ta:"Austin FC",      tb:"Seattle Sounders",       date:"2026-07-22"},
+    {ta:"Sporting Kansas City", tb:"Minnesota United", date:"2026-07-22"},
+    {ta:"Houston Dynamo", tb:"D.C. United",            date:"2026-07-22"},
+    {ta:"Colorado Rapids",tb:"San Diego FC",           date:"2026-07-22"},
+    {ta:"LAFC",           tb:"Real Salt Lake",         date:"2026-07-22"},
+    {ta:"LA Galaxy",      tb:"St. Louis City SC",      date:"2026-07-22"},
+    {ta:"San Jose Earthquakes", tb:"Orlando City",     date:"2026-07-22"},
+    {ta:"Portland Timbers", tb:"FC Dallas",            date:"2026-07-22"}
+  ],
+  "25 jul": [
+    {ta:"Columbus Crew",  tb:"FC Cincinnati",          date:"2026-07-25"},
+    {ta:"CF Montréal",    tb:"Inter Miami CF",         date:"2026-07-25"},
+    {ta:"Philadelphia Union", tb:"Seattle Sounders",   date:"2026-07-25"},
+    {ta:"Orlando City",   tb:"Nashville SC",           date:"2026-07-25"},
+    {ta:"New York City FC", tb:"Chicago Fire",         date:"2026-07-25"},
+    {ta:"New England Revolution", tb:"Atlanta United", date:"2026-07-25"},
+    {ta:"D.C. United",    tb:"Toronto FC",             date:"2026-07-25"},
+    {ta:"Minnesota United", tb:"Vancouver Whitecaps",  date:"2026-07-25"},
+    {ta:"Houston Dynamo", tb:"Austin FC",              date:"2026-07-25"},
+    {ta:"St. Louis City SC", tb:"Colorado Rapids",     date:"2026-07-25"},
+    {ta:"San Diego FC",   tb:"FC Dallas",              date:"2026-07-25"},
+    {ta:"LAFC",           tb:"Sporting Kansas City",   date:"2026-07-25"},
+    {ta:"San Jose Earthquakes", tb:"LA Galaxy",        date:"2026-07-25"},
+    {ta:"Portland Timbers", tb:"Real Salt Lake",       date:"2026-07-25"},
+    {ta:"New York Red Bulls", tb:"Charlotte FC",       date:"2026-07-25"}
+  ],
+  "31 jul - 1 ago": [
+    {ta:"New York City FC", tb:"Toronto FC",           date:"2026-07-31"},
+    {ta:"Inter Miami CF", tb:"Columbus Crew",          date:"2026-08-01"},
+    {ta:"Vancouver Whitecaps", tb:"LAFC",              date:"2026-08-01"},
+    {ta:"Philadelphia Union", tb:"Atlanta United",     date:"2026-08-01"}
+  ]
+};
+
+let MLS_STR = {};
+let MLS_RR = {};
+let MLS_PD = [];
+
+function mlsNorm(v, lo, hi){ return Math.max(0, Math.min(1, (v-lo)/(hi-lo))); }
+
+function mlsInitStr(){
+  for(const[n,d] of Object.entries(MLS_TD)){
+    const ppg = d.pts/d.pj;
+    const gdpg = (d.gf-d.ga)/d.pj;
+    const prestige = Math.min(d.titles*0.008, 0.15);
+    let str = Math.max(0.05, Math.min(0.98,
+      0.50*mlsNorm(ppg,0,3) + 0.30*mlsNorm(gdpg,-2,2) + 0.20*(prestige/0.15)*0.20
+    ));
+    MLS_STR[n] = str;
+  }
+}
+
+function mlsBayesUpd(){
+  const u={...MLS_STR}, ts={};
+  for(const[k,r] of Object.entries(MLS_RR)){
+    if(r[0]===undefined||r[1]===undefined) continue;
+    const[ta,tb]=k.split('|'); const ga=r[0], gb=r[1];
+    [ta,tb].forEach((t,i)=>{
+      if(!ts[t]) ts[t]={pts:0,gf:0,ga:0,played:0};
+      const s=ts[t]; s.played++;
+      s.gf += i===0?ga:gb; s.ga += i===0?gb:ga;
+      if((i===0&&ga>gb)||(i===1&&gb>ga)) s.pts+=3;
+      else if(ga===gb) s.pts+=1;
+    });
+  }
+  for(const[n,s] of Object.entries(ts)){
+    if(!s.played) continue;
+    const perf = 0.60*(s.pts/s.played/3) + 0.40*Math.max(0,Math.min(1,((s.gf-s.ga)/s.played+3)/6));
+    const w = Math.min(0.20*s.played, 0.50);
+    u[n] = Math.max(0.05, Math.min(0.98, (1-w)*MLS_STR[n] + w*perf));
+  }
+  return u;
+}
+
+function mlsXgCalc(ta, tb, u){
+  const sa = u[ta] ?? MLS_STR[ta], sb = u[tb] ?? MLS_STR[tb];
+  const da = MLS_TD[ta], db = MLS_TD[tb], af = ap(sa, sb);
+  const gfA = da.gf/da.pj, gaA = da.ga/da.pj, gfB = db.gf/db.pj, gaB = db.ga/db.pj;
+  const la = Math.max(BASE*(gfA/1.3)*(gaB/1.3)*(1+0.3*(sa-sb))*af, 0.3);
+  const lb = Math.max(BASE*(gfB/1.3)*(gaA/1.3)*(1+0.3*(sb-sa))*af, 0.3);
+  return [la, lb];
+}
+
+function mlsMatchAnal(ta, tb, u){
+  const [la, lb] = mlsXgCalc(ta, tb, u);
+  let wa=0, wd=0, wb=0, p_over25=0, p_under25=0, p_btts=0, p_no_btts=0, p_over15=0, p_over35=0;
+  for(let i=0;i<10;i++) for(let j=0;j<10;j++){
+    const p = pPmf(i,la)*pPmf(j,lb)*dcF(i,j,la,lb);
+    if(i>j) wa+=p; else if(i===j) wd+=p; else wb+=p;
+    const total=i+j;
+    if(total>2.5) p_over25+=p; else p_under25+=p;
+    if(total>1.5) p_over15+=p;
+    if(total>3.5) p_over35+=p;
+    if(i>=1&&j>=1) p_btts+=p; else p_no_btts+=p;
+  }
+  const tot=wa+wd+wb, matSum=p_over25+p_under25, bttsSum=p_btts+p_no_btts;
+  const totalLambda=la+lb, p_no_goal=Math.exp(-totalLambda);
+  const htA=+(la*0.45).toFixed(2), htB=+(lb*0.45).toFixed(2);
+  return {
+    la:+la.toFixed(2), lb:+lb.toFixed(2), xg_total:+(la+lb).toFixed(2),
+    xgRA: la>=0.75?Math.round(la):0, xgRB: lb>=0.75?Math.round(lb):0,
+    xgRStr: `${la>=0.75?Math.round(la):0}-${lb>=0.75?Math.round(lb):0}`,
+    htA, htB, htRA: htA>=0.75?Math.round(htA):0, htRB: htB>=0.75?Math.round(htB):0,
+    pw_a:+(wa/tot).toFixed(3), pd:+(wd/tot).toFixed(3), pw_b:+(wb/tot).toFixed(3),
+    p_over25:+(p_over25/matSum).toFixed(3), p_under25:+(p_under25/matSum).toFixed(3),
+    p_over15:+(p_over15/matSum).toFixed(3), p_over35:+(p_over35/matSum).toFixed(3),
+    p_btts:+(p_btts/bttsSum).toFixed(3), p_no_btts:+(p_no_btts/bttsSum).toFixed(3),
+    p_a_first:+(la/totalLambda*(1-p_no_goal)).toFixed(3),
+    p_b_first:+(lb/totalLambda*(1-p_no_goal)).toFixed(3),
+    p_no_goal:+p_no_goal.toFixed(3),
+    winner: wa>=wb?ta:tb
+  };
+}
+
+function mlsCornerCalc(ta, tb){
+  const faA = MLS_CORNER_FAVOR[ta] ?? 4.6, faB = MLS_CORNER_FAVOR[tb] ?? 4.6;
+  const coA = MLS_CORNER_CONTRA[ta] ?? 4.6, coB = MLS_CORNER_CONTRA[tb] ?? 4.6;
+  const la = Math.max(1.5, (faA + coB) / 2);
+  const lb = Math.max(1.5, (faB + coA) / 2);
+  return [+la.toFixed(2), +lb.toFixed(2)];
+}
+function mlsCardCalc(ta, tb){
+  const ia=MLS_CARD_IDX[ta]||5.7, ib=MLS_CARD_IDX[tb]||5.7;
+  const la=Math.max(0.5, BASE_T*(ia/6.0)*(0.7+0.3*ib/6.0));
+  const lb=Math.max(0.5, BASE_T*(ib/6.0)*(0.7+0.3*ia/6.0));
+  return [+la.toFixed(2), +lb.toFixed(2)];
+}
+
+function mlsGetResult(ta, tb){
+  const k1=ta+'|'+tb, k2=tb+'|'+ta;
+  if(MLS_RR[k1]&&MLS_RR[k1][0]!==undefined) return {ga:MLS_RR[k1][0], gb:MLS_RR[k1][1]};
+  if(MLS_RR[k2]&&MLS_RR[k2][0]!==undefined) return {ga:MLS_RR[k2][1], gb:MLS_RR[k2][0]};
+  return null;
+}
+
+function mlsTeamForm(name){
+  const played = [];
+  for(const[fecha, matches] of Object.entries(MLS_FIXTURES)){
+    matches.forEach(m=>{
+      if(m.ta!==name && m.tb!==name) return;
+      const real = mlsGetResult(m.ta, m.tb);
+      if(!real) return;
+      const isHome = m.ta===name;
+      const myG = isHome?real.ga:real.gb, oppG = isHome?real.gb:real.ga;
+      const opp = isHome?m.tb:m.ta;
+      const result = myG>oppG?'W':(myG===oppG?'D':'L');
+      played.push({date:m.date, opp, myG, oppG, result});
+    });
+  }
+  played.sort((a,b)=>a.date.localeCompare(b.date));
+  return played.slice(-3);
+}
+
+function mlsCalcStandings(){
+  // Igual que Brasileirão: temporada larga y continua (no reinicia por torneo),
+  // así que partimos de la tabla real ya jugada (MLS_TD, hasta la pausa por el
+  // Mundial) y sumamos encima lo que se ingrese desde la reanudación en adelante.
+  const rows = MLS_TEAMS.map(n => {
+    const base = MLS_TD[n];
+    return {name:n, pj:base.pj, pts:base.pts, gf:base.gf, ga:base.ga};
+  });
+  const byName = Object.fromEntries(rows.map(r=>[r.name,r]));
+  const seen = new Set();
+  for(const[k,r] of Object.entries(MLS_RR)){
+    if(r[0]===undefined||r[1]===undefined) continue;
+    if(seen.has(k)) continue; seen.add(k);
+    const[ta,tb]=k.split('|'); const ga=r[0], gb=r[1];
+    if(!byName[ta]||!byName[tb]) continue;
+    byName[ta].pj++; byName[tb].pj++;
+    byName[ta].gf+=ga; byName[ta].ga+=gb;
+    byName[tb].gf+=gb; byName[tb].ga+=ga;
+    if(ga>gb) byName[ta].pts+=3;
+    else if(gb>ga) byName[tb].pts+=3;
+    else { byName[ta].pts+=1; byName[tb].pts+=1; }
+  }
+  return rows.sort((a,b)=>(b.pts-a.pts)||((b.gf-b.ga)-(a.gf-a.ga))||(b.gf-a.gf));
+}
+
+function mlsRenderStandings(){
+  const cont = document.getElementById('gcont-mls');
+  if(!cont) return;
+  const rows = mlsCalcStandings();
+  let html = `<div style="background:#e8f4fd;border:1px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:1rem;font-size:12px;color:#1565c0">
+    📊 Tabla de posiciones — MLS 2026 (temporada en curso, ambas conferencias combinadas)
+  </div>`;
+  html += `<table class="gtbl" style="width:100%"><thead><tr>
+    <th style="width:20px">#</th><th>Equipo</th><th class="r">PJ</th><th class="r">Pts</th>
+    <th class="r">GF</th><th class="r">GA</th><th class="r">DG</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{
+    const dg = r.gf-r.ga;
+    html += `<tr>
+      <td style="font-weight:600;color:#333">${i+1}</td>
+      <td style="font-weight:500;cursor:pointer" onclick="mlsOpenTeamProfile('${r.name}')">${r.name}</td>
+      <td class="r">${r.pj}</td><td class="r"><strong>${r.pts}</strong></td>
+      <td class="r">${r.gf}</td><td class="r">${r.ga}</td>
+      <td class="r">${dg>0?'+':''}${dg}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>
+  <p style="font-size:11px;color:#999;margin-top:8px">Tabla combinada de las 2 conferencias (Este/Oeste) — los playoffs se definen por conferencia, no por esta tabla general.</p>`;
+  cont.innerHTML = html;
+}
+
+function mlsOpenTeamProfile(name){
+  showLeagueTeamProfile(name, {
+    label: 'MLS 2026', modalId: 'mls-team-modal',
+    TEAMS: MLS_TEAMS, calcStandingsFn: mlsCalcStandings,
+    strFn: mlsBayesUpd, matchAnalFn: mlsMatchAnal,
+    cornerCalcFn: mlsCornerCalc, teamFormFn: mlsTeamForm,
+    cornerFavor: MLS_CORNER_FAVOR, cornerContra: MLS_CORNER_CONTRA,
+    FIXTURES: MLS_FIXTURES, getResultFn: mlsGetResult,
+    openProfileFnName: 'mlsOpenTeamProfile',
+    zoneFn: null // no se calcula por conferencia — la tabla combinada no refleja fielmente la clasificación real a playoffs
+  });
+}
+
+function mlsBuildPD(){
+  const u = mlsBayesUpd();
+  const data = [];
+  for(const[fecha, matches] of Object.entries(MLS_FIXTURES)){
+    matches.forEach(m=>{
+      const a = mlsMatchAnal(m.ta, m.tb, u);
+      const real = mlsGetResult(m.ta, m.tb);
+      data.push({
+        fecha, date:m.date, ta:m.ta, tb:m.tb, ...a,
+        played: !!real, real: real?[real.ga,real.gb]:null
+      });
+    });
+  }
+  MLS_PD = data;
+  return data;
+}
+
+function mlsRenderPCard(m){
+  const maxP = Math.max(m.pw_a, m.pd, m.pw_b);
+  const hiA = m.pw_a===maxP, hiD = m.pd===maxP&&!hiA, hiB = m.pw_b===maxP&&!hiA&&!hiD;
+  const wA = m.played && m.real[0]>m.real[1];
+  const wB = m.played && m.real[1]>m.real[0];
+  const scoreMain = m.played ? `<span style="color:#1a5e34">${m.real[0]}-${m.real[1]}</span>` : m.xgRStr;
+  const scoreLbl = m.played ? 'real' : 'xG rond.';
+  const modalKey = (m.ta+'|'+m.tb).replace(/['"]/g,'');
+  const dateLabel = new Date(m.date+'T00:00:00').toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
+
+  const favWinP = Math.max(m.pw_a, m.pw_b);
+  const undWinP = Math.min(m.pw_a, m.pw_b);
+  const isUpset = !m.played && undWinP >= 0.30 && favWinP < 0.60;
+  const upsetBadge = isUpset
+    ? `<span style="font-size:10px;font-weight:600;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:5px;padding:2px 7px;white-space:nowrap">🚨 Posible sorpresa</span>`
+    : '';
+
+  return `<div class="pcard${m.played?' played-card':''}">
+    <div class="pcard-hdr">
+      <span>${m.fecha} · ${dateLabel}</span>
+      <span style="display:flex;align-items:center;gap:5px">${upsetBadge}${m.played?'✅ Jugado':'⏳ Pendiente'}</span>
+    </div>
+    <div class="pcard-body">
+      <div class="teams-row">
+        <div class="team-a-n${wA?' fav':''}" style="cursor:pointer" onclick="mlsOpenTeamProfile('${m.ta}')">${m.ta}</div>
+        <div class="sbox${wA||wB?' fs':''}">${scoreMain}<span class="slbl">${scoreLbl}</span></div>
+        <div class="team-b-n${wB?' fav':''}" style="cursor:pointer" onclick="mlsOpenTeamProfile('${m.tb}')">${m.tb}</div>
+      </div>
+      <div class="probs-row">
+        <div class="pbox${hiA?' hi':''}"><div class="pv">${(m.pw_a*100).toFixed(0)}%</div><div class="pl">Gana ${m.ta.split(' ')[0]}</div></div>
+        <div class="pbox${hiD?' hi':''}"><div class="pv">${(m.pd*100).toFixed(0)}%</div><div class="pl">Empate</div></div>
+        <div class="pbox${hiB?' hi':''}"><div class="pv">${(m.pw_b*100).toFixed(0)}%</div><div class="pl">Gana ${m.tb.split(' ')[0]}</div></div>
+      </div>
+      ${IS_PREMIUM ? `<div class="quick-strip">
+        <div class="qs-xg-pill">
+          <div class="qs-xg-team"><span class="qs-xg-name">${m.ta.split(' ')[0]}</span><span class="qs-xg-num">${m.la}</span></div>
+          <div class="qs-xg-mid"><span class="qs-xg-label">xG</span><span class="qs-xg-total-val">Total ${m.xg_total}</span></div>
+          <div class="qs-xg-team qs-xg-team-r"><span class="qs-xg-name">${m.tb.split(' ')[0]}</span><span class="qs-xg-num">${m.lb}</span></div>
+        </div>
+        <div class="qs-pills-row">
+          <div class="qs-pill ${m.p_over25>=0.5?'qs-pill-blue':'qs-pill-gray'}"><span class="qs-pill-lbl">O2.5</span><span class="qs-pill-val">${(m.p_over25*100).toFixed(0)}%</span></div>
+          <div class="qs-pill qs-pill-gray"><span class="qs-pill-lbl">U2.5</span><span class="qs-pill-val">${(m.p_under25*100).toFixed(0)}%</span></div>
+          <div class="qs-pill ${m.p_btts>=0.5?'qs-pill-green':'qs-pill-gray'}"><span class="qs-pill-lbl">BTTS</span><span class="qs-pill-val">${(m.p_btts*100).toFixed(0)}%</span></div>
+          <div class="qs-pill ${m.p_over15>=0.7?'qs-pill-blue':'qs-pill-gray'}"><span class="qs-pill-lbl">O1.5</span><span class="qs-pill-val">${(m.p_over15*100).toFixed(0)}%</span></div>
+        </div>
+      </div>` : `<div style="margin:8px 0;padding:10px 12px;background:#f9f9f9;border-radius:8px;border:1px dashed #ddd;display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="font-size:11px;color:#888">🔐 <strong style="color:#111">xG · O/U · BTTS · Corners · Tarjetas</strong> disponibles en Premium</div>
+        <button onclick="showPremiumModal()" style="padding:5px 10px;background:#111;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;font-weight:500">Ver más →</button>
+      </div>`}
+      <button class="expand-btn" onclick="${IS_PREMIUM ? `mlsOpenMatchModal('${modalKey}')` : 'showPremiumModal()'}">
+        <span class="expand-label">${IS_PREMIUM ? 'Ver análisis completo' : '🔐 Desbloquear análisis completo'}</span>
+        <span class="expand-icon">↗</span>
+      </button>
+    </div>
+  </div>`;
+}
+
+let MLS_SEARCH_Q = '';
+let MLS_FECHA_FILTER = 'all';
+
+function mlsFilterMatches(val){
+  MLS_SEARCH_Q = val || '';
+  mlsRenderPartidos();
+  setTimeout(()=>{
+    const inp = document.getElementById('mls-search-input');
+    if(inp){ inp.focus(); inp.setSelectionRange(MLS_SEARCH_Q.length, MLS_SEARCH_Q.length); }
+  }, 10);
+}
+function mlsFiltFecha(fecha){
+  MLS_FECHA_FILTER = fecha;
+  mlsRenderPartidos();
+}
+
+function mlsRenderPartidos(){
+  const cont = document.getElementById('pcont-mls');
+  if(!cont) return;
+  mlsBuildPD();
+  window._MLS_PCARDS = {};
+  MLS_PD.forEach(m=>{ window._MLS_PCARDS[m.ta+'|'+m.tb] = m; });
+
+  const sq = MLS_SEARCH_Q.toLowerCase().trim().replace(/\bvs\b/g,'').trim();
+  const sqParts = sq.split(/\s+/).filter(Boolean);
+  function matchesSearch(m){
+    if(!sq) return true;
+    const ta=m.ta.toLowerCase(), tb=m.tb.toLowerCase();
+    if(sqParts.length>=2) return sqParts.every(p=>ta.includes(p)||tb.includes(p));
+    return ta.includes(sq)||tb.includes(sq);
+  }
+
+  const fechaKeys = Object.keys(MLS_FIXTURES);
+  let html = `<div class="rfilt" style="margin-bottom:.8rem">
+    <button class="rfbtn${MLS_FECHA_FILTER==='all'?' active':''}" onclick="mlsFiltFecha('all')">Todas</button>
+    ${fechaKeys.map(fk=>`<button class="rfbtn${MLS_FECHA_FILTER===fk?' active':''}" onclick="mlsFiltFecha('${fk}')">${fk}</button>`).join('')}
+  </div>`;
+
+  html += `<div style="margin-bottom:.8rem">
+    <input id="mls-search-input" type="text" placeholder="🔍 Buscar equipo o partido (ej: América · América Chivas)" value="${MLS_SEARCH_Q}"
+      oninput="mlsFilterMatches(this.value)"
+      style="width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box"
+      onfocus="this.style.borderColor='#111'" onblur="this.style.borderColor='#ddd'">
+  </div>`;
+
+  const filtered = MLS_PD.filter(m => (MLS_FECHA_FILTER==='all' || m.fecha===MLS_FECHA_FILTER) && matchesSearch(m));
+  if(!filtered.length){
+    html += `<div class="infobox">No se encontraron partidos${MLS_SEARCH_Q?` para <strong>"${MLS_SEARCH_Q}"</strong>`:''}.</div>`;
+    cont.innerHTML = html;
+    return;
+  }
+
+  let lastFecha = '';
+  filtered.forEach(m=>{
+    if(m.fecha !== lastFecha){
+      if(lastFecha) html += '</div>';
+      lastFecha = m.fecha;
+      html += `<p class="slabel">${m.fecha}</p><div class="pmgrid">`;
+    }
+    html += mlsRenderPCard(m);
+  });
+  if(lastFecha) html += '</div>';
+  html += `<p style="font-size:11px;color:#999;margin-top:1rem">Calendario cargado: ${Object.keys(MLS_FIXTURES).join(', ')} · se amplía cada semana</p>`;
+  cont.innerHTML = html;
+}
+
+function mlsOuTeamHtml(name, pScore, p15, p25){
+  return '<div class="ou-team-block">'
+    +'<div class="ou-team-name">'+name.split(' ')[0]+'</div>'
+    +'<table class="ou-team-table"><thead><tr><th>Línea</th><th>Over</th><th>Under</th></tr></thead><tbody>'
+    +'<tr class="'+(pScore>=0.5?'ou-tr-hi':'')+'"><td><strong>0.5</strong></td><td class="'+(pScore>=0.5?'td-hi-g':'')+'"><strong>'+Math.round(pScore*100)+'%</strong></td><td class="'+((1-pScore)>=0.5?'td-hi-r':'')+'"><strong>'+Math.round((1-pScore)*100)+'%</strong></td></tr>'
+    +'<tr class="'+(p15>=0.5?'ou-tr-hi':'')+'"><td><strong>1.5</strong></td><td class="'+(p15>=0.5?'td-hi-g':'')+'"><strong>'+Math.round(p15*100)+'%</strong></td><td class="'+((1-p15)>=0.5?'td-hi-r':'')+'"><strong>'+Math.round((1-p15)*100)+'%</strong></td></tr>'
+    +'<tr class="'+(p25>=0.4?'ou-tr-hi':'')+'"><td><strong>2.5</strong></td><td class="'+(p25>=0.4?'td-hi-g':'')+'"><strong>'+Math.round(p25*100)+'%</strong></td><td class="'+((1-p25)>=0.6?'td-hi-r':'')+'"><strong>'+Math.round((1-p25)*100)+'%</strong></td></tr>'
+    +'</tbody></table></div>';
+}
+function mlsFormDots(form){
+  if(!form.length) return '<span style="font-size:11px;color:#aaa">Sin partidos registrados aún</span>';
+  return form.map(r=>{
+    const bg = r.result==='W'?'#d4edda':r.result==='D'?'#e8e8e8':'#fde8e8';
+    const col = r.result==='W'?'#1a5e34':r.result==='D'?'#666':'#c00';
+    return `<span title="vs ${r.opp}: ${r.myG}-${r.oppG}" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${bg};color:${col};font-size:10px;font-weight:700">${r.result}</span>`;
+  }).join(' ');
+}
+
+function mlsOpenMatchModal(key){
+  const m = window._MLS_PCARDS[key];
+  if(!m) return;
+  const existing = document.getElementById('mls-match-modal');
+  if(existing) existing.remove();
+
+  const p_score_a=+(1-Math.exp(-m.la)).toFixed(3), p_score_b=+(1-Math.exp(-m.lb)).toFixed(3);
+  const p_15_a=+(1-Math.exp(-m.la)*(1+m.la)).toFixed(3), p_15_b=+(1-Math.exp(-m.lb)*(1+m.lb)).toFixed(3);
+  const p_25_a=+(1-Math.exp(-m.la)*(1+m.la+m.la*m.la/2)).toFixed(3), p_25_b=+(1-Math.exp(-m.lb)*(1+m.lb+m.lb*m.lb/2)).toFixed(3);
+
+  const [ca, cb] = mlsCornerCalc(m.ta, m.tb);
+  const cTotal = +(ca+cb).toFixed(2);
+  const cLines = [2.5,3.5,4.5,5.5,6.5,7.5,8.5];
+  const cGlobalLines = [5.5,6.5,7.5,8.5,9.5,10.5];
+  const cGlobalOU = cornerOUTable(cTotal, cGlobalLines);
+  const cOUa = cornerOUTable(ca, cLines), cOUb = cornerOUTable(cb, cLines);
+
+  const [tla, tlb] = mlsCardCalc(m.ta, m.tb);
+  const tTotal = +(tla+tlb).toFixed(2);
+  const tLines = [0.5,1.5,2.5];
+  const tGlobalLines = [2.5,3.5,4.5];
+  const tGlobalOU = cornerOUTable(tTotal, tGlobalLines);
+  const tOUa = cornerOUTable(tla, tLines), tOUb = cornerOUTable(tlb, tLines);
+
+  function pillStyle(p){
+    if(p>=0.65) return 'background:#d4edda;color:#1a5e34;border:1px solid #86efac';
+    if(p>=0.50) return 'background:#fff3cd;color:#856404;border:1px solid #fcd34d';
+    return 'background:#f0f0f0;color:#888;border:1px solid transparent';
+  }
+  function ouRow(r){
+    return '<tr><td><strong>'+r.line+'</strong></td>'
+      +'<td><span style="display:inline-block;padding:2px 8px;border-radius:5px;font-weight:600;font-size:12px;'+pillStyle(r.pOver)+'">'+Math.round(r.pOver*100)+'%</span></td>'
+      +'<td><span style="display:inline-block;padding:2px 8px;border-radius:5px;font-weight:600;font-size:12px;'+pillStyle(r.pUnder)+'">'+Math.round(r.pUnder*100)+'%</span></td></tr>';
+  }
+  function teamBlock(name, lambda, rows){
+    return '<div class="ou-team-block"><div class="ou-team-name">'+name.split(' ')[0]+' <span style="font-size:10px;color:#888;font-weight:400">λ='+lambda+'</span></div>'
+      +'<table class="ou-team-table"><thead><tr><th>Línea</th><th>Over</th><th>Under</th></tr></thead><tbody>'+rows.map(ouRow).join('')+'</tbody></table></div>';
+  }
+
+  const scores=[];
+  for(let i=0;i<8;i++) for(let j=0;j<8;j++) scores.push({s:i+'-'+j, p:pPmf(i,m.la)*pPmf(j,m.lb)*dcF(i,j,m.la,m.lb)});
+  scores.sort((a,b)=>b.p-a.p);
+  const top5 = scores.slice(0,5);
+  const top5sum = top5.reduce((s,x)=>s+x.p,0);
+
+  const formA = mlsTeamForm(m.ta), formB = mlsTeamForm(m.tb);
+  const maxP = Math.max(m.pw_a, m.pd, m.pw_b);
+  const maxFirst = Math.max(m.p_a_first, m.p_b_first);
+
+  const favTeam = m.pw_a>=m.pw_b ? m.ta : m.tb;
+  const undTeam = m.pw_a>=m.pw_b ? m.tb : m.ta;
+  const favP = Math.max(m.pw_a, m.pw_b), undP = Math.min(m.pw_a, m.pw_b);
+  const isUpset = !m.played && undP>=0.30 && favP<0.60;
+
+  function mlsUpsetReasons(){
+    const reasons = [];
+    const strA = MLS_STR[m.ta]||0.5, strB = MLS_STR[m.tb]||0.5;
+    if(Math.abs(strA-strB) < 0.08) reasons.push({icon:'⚖️', txt:'Los dos equipos tienen un nivel muy similar según su rendimiento reciente.'});
+    const undStr = MLS_STR[undTeam]||0.5;
+    if(undStr > 0.40) reasons.push({icon:'🔥', txt: undTeam+' viene con buen nivel — no es un rival tan fácil como sugiere ser el menos favorito.'});
+    if(m.pd >= 0.27) reasons.push({icon:'🤝', txt:'Hay una probabilidad alta de empate ('+Math.round(m.pd*100)+'%) — el partido puede decidirse por detalles.'});
+    if(!reasons.length) reasons.push({icon:'💡', txt:'El modelo detecta que '+undTeam+' tiene una probabilidad real de ganar, más de lo que sugiere ser el equipo menos favorito.'});
+    return reasons;
+  }
+  const reasons = isUpset ? mlsUpsetReasons() : [];
+  const upsetHtml = isUpset ? `
+    <div class="modal-section">
+      <div style="background:#fef3c7;border:1.5px solid #fcd34d;border-radius:10px;padding:12px 14px">
+        <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">🚨 El modelo detecta una posible sorpresa</div>
+        <div style="font-size:12px;color:#78350f;line-height:1.5"><strong>${undTeam}</strong> tiene un <strong>${Math.round(undP*100)}%</strong> de probabilidad de ganar, frente a <strong>${favTeam}</strong> (${Math.round(favP*100)}%).</div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">¿Por qué puede pasar la sorpresa?</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${reasons.map(r=>`<div style="display:flex;gap:10px;align-items:flex-start;background:#f9f9f9;border-radius:8px;padding:10px">
+          <span style="font-size:18px;flex-shrink:0">${r.icon}</span><span style="font-size:12px;color:#444;line-height:1.5">${r.txt}</span>
+        </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  const golesHtml = `
+    <div class="modal-section">
+      <div class="modal-sec-title">Expected Goals (xG)</div>
+      <div class="xgs">
+        <div class="xgrow"><div class="xgra">${m.xgRA}</div><div class="xglbl">xG redondeado</div><div class="xgrb">${m.xgRB}</div></div>
+        <hr class="xgdiv">
+        <div class="xgrow"><div class="xgva">${m.la}</div><div class="xglbl">xG exacto · total ${m.xg_total}</div><div class="xgvb">${m.lb}</div></div>
+        <hr class="xgdiv">
+        <div class="xgrow"><div class="xghta">${m.htRA} <span style="opacity:.6">(${m.htA})</span></div><div class="xglbl">xG medio tiempo</div><div class="xghtb"><span style="opacity:.6">(${m.htB})</span> ${m.htRB}</div></div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">🥅 ¿Quién marca primero?</div>
+      <div style="display:flex;gap:8px;align-items:stretch">
+        <div style="flex:1;text-align:center;padding:10px 6px;border-radius:10px;background:${m.p_a_first===maxFirst?'#d4edda':'#f0f0f0'};border:${m.p_a_first===maxFirst?'1px solid #86efac':'1px solid transparent'}">
+          <div style="font-size:22px;font-weight:700;color:${m.p_a_first===maxFirst?'#1a5e34':'#888'}">${Math.round(m.p_a_first*100)}%</div>
+          <div style="font-size:10px;color:${m.p_a_first===maxFirst?'#1a5e34':'#888'};margin-top:3px;font-weight:500">Marca primero<br>${m.ta.split(' ')[0]}</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:10px 6px;border-radius:10px;background:${m.p_b_first===maxFirst?'#d4edda':'#f0f0f0'};border:${m.p_b_first===maxFirst?'1px solid #86efac':'1px solid transparent'}">
+          <div style="font-size:22px;font-weight:700;color:${m.p_b_first===maxFirst?'#1a5e34':'#888'}">${Math.round(m.p_b_first*100)}%</div>
+          <div style="font-size:10px;color:${m.p_b_first===maxFirst?'#1a5e34':'#888'};margin-top:3px;font-weight:500">Marca primero<br>${m.tb.split(' ')[0]}</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:10px 6px;border-radius:10px;background:#f0f0f0;border:1px solid transparent">
+          <div style="font-size:22px;font-weight:700;color:#888">${Math.round(m.p_no_goal*100)}%</div>
+          <div style="font-size:10px;color:#888;margin-top:3px;font-weight:500">Sin goles<br>(0-0)</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Top 5 resultados más probables</div>
+      <div class="top5-grid">
+        ${top5.map((s,i)=>`<div class="top5-item${i===0?' top5-first':''}">
+          <div class="top5-score">${s.s}</div>
+          <div class="top5-bar-wrap"><div class="top5-bar" style="width:${Math.round(s.p/top5[0].p*100)}%"></div></div>
+          <div class="top5-pct">${(s.p*100).toFixed(1)}%</div>
+        </div>`).join('')}
+        <div class="top5-note">Otros resultados: ${((1-top5sum)*100).toFixed(0)}% de probabilidad combinada</div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Over / Under — Partido completo</div>
+      <div class="ou-btts"><div class="ou-row">
+        <div class="ou-item${m.p_over15>=0.7?' ou-hi':''}"><div class="ou-val">${Math.round(m.p_over15*100)}%</div><div class="ou-lbl">Over 1.5</div></div>
+        <div class="ou-item${m.p_over25>=0.5?' ou-hi':''}"><div class="ou-val">${Math.round(m.p_over25*100)}%</div><div class="ou-lbl">Over 2.5</div></div>
+        <div class="ou-item${m.p_over35>=0.4?' ou-hi':''}"><div class="ou-val">${Math.round(m.p_over35*100)}%</div><div class="ou-lbl">Over 3.5</div></div>
+        <div class="ou-item${m.p_under25>0.5?' ou-hi':''}"><div class="ou-val">${Math.round(m.p_under25*100)}%</div><div class="ou-lbl">Under 2.5</div></div>
+      </div></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">BTTS — Ambos equipos marcan</div>
+      <div class="ou-btts"><div class="ou-row">
+        <div class="ou-item${m.p_btts>=0.5?' btts-hi':''}"><div class="ou-val">${Math.round(m.p_btts*100)}%</div><div class="ou-lbl">BTTS ✅</div></div>
+        <div class="ou-item${m.p_no_btts>0.5?' btts-no-hi':''}"><div class="ou-val">${Math.round(m.p_no_btts*100)}%</div><div class="ou-lbl">No BTTS ❌</div></div>
+      </div></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Over / Under — Por equipo</div>
+      <div class="ou-teams-grid">
+        ${mlsOuTeamHtml(m.ta, p_score_a, p_15_a, p_25_a)}
+        ${mlsOuTeamHtml(m.tb, p_score_b, p_15_b, p_25_b)}
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Forma reciente (últimos partidos registrados)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="text-align:center"><div style="font-size:11px;color:#888;margin-bottom:6px">${m.ta}</div>${mlsFormDots(formA)}</div>
+        <div style="text-align:center"><div style="font-size:11px;color:#888;margin-bottom:6px">${m.tb}</div>${mlsFormDots(formB)}</div>
+      </div>
+      <p style="font-size:10px;color:#aaa;margin-top:8px">Solo refleja partidos ingresados desde la reanudación tras el Mundial (17 de julio en adelante).</p>
+    </div>`;
+
+  const cornersHtml = `
+    <div class="modal-section">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:#f5f5f5;border-radius:10px;padding:14px 16px">
+        <div style="text-align:right"><div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">${m.ta}</div><div style="font-size:28px;font-weight:700">${ca}</div><div style="font-size:10px;color:#aaa;margin-top:2px">corners esp.</div></div>
+        <div style="text-align:center"><div style="font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase">Total esp.</div><div style="font-size:32px;font-weight:700">${cTotal}</div></div>
+        <div style="text-align:left"><div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">${m.tb}</div><div style="font-size:28px;font-weight:700">${cb}</div><div style="font-size:10px;color:#aaa;margin-top:2px">corners esp.</div></div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Over / Under — Partido completo</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:5px">
+        ${cGlobalOU.map(r=>`<div style="text-align:center;padding:7px 4px;border-radius:8px;${pillStyle(r.pOver)}"><div style="font-size:13px;font-weight:700">${Math.round(r.pOver*100)}%</div><div style="font-size:9px;font-weight:500;margin-top:2px">O${r.line}</div></div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px">
+        ${cGlobalOU.map(r=>`<div style="text-align:center;padding:7px 4px;border-radius:8px;${pillStyle(r.pUnder)}"><div style="font-size:13px;font-weight:700">${Math.round(r.pUnder*100)}%</div><div style="font-size:9px;font-weight:500;margin-top:2px">U${r.line}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Over / Under — Por equipo</div>
+      <div class="ou-teams-grid">${teamBlock(m.ta, ca, cOUa)}${teamBlock(m.tb, cb, cOUb)}</div>
+    </div>
+    <div class="modal-section">
+      <p style="font-size:11px;color:#888;line-height:1.5">Se calcula con distribución de Poisson (igual que los goles). El promedio esperado parte de datos reales de corners a favor/en contra por equipo (temporada 2025/26), no de una estimación.</p>
+    </div>`;
+
+  const tarjetasHtml = `
+    <div class="modal-section">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:#f5f5f5;border-radius:10px;padding:14px 16px">
+        <div style="text-align:right"><div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">${m.ta}</div><div style="font-size:28px;font-weight:700">${tla}</div><div style="font-size:10px;color:#aaa;margin-top:2px">tarjetas esp.</div></div>
+        <div style="text-align:center"><div style="font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase">Total esp.</div><div style="font-size:32px;font-weight:700">${tTotal}</div></div>
+        <div style="text-align:left"><div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">${m.tb}</div><div style="font-size:28px;font-weight:700">${tlb}</div><div style="font-size:10px;color:#aaa;margin-top:2px">tarjetas esp.</div></div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Over / Under — Partido completo</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px">
+        ${tGlobalOU.map(r=>`<div style="text-align:center;padding:7px 4px;border-radius:8px;${pillStyle(r.pOver)}"><div style="font-size:13px;font-weight:700">${Math.round(r.pOver*100)}%</div><div style="font-size:9px;font-weight:500;margin-top:2px">O${r.line}</div></div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+        ${tGlobalOU.map(r=>`<div style="text-align:center;padding:7px 4px;border-radius:8px;${pillStyle(r.pUnder)}"><div style="font-size:13px;font-weight:700">${Math.round(r.pUnder*100)}%</div><div style="font-size:9px;font-weight:500;margin-top:2px">U${r.line}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-sec-title">Over / Under — Por equipo</div>
+      <div class="ou-teams-grid">${teamBlock(m.ta, tla, tOUa)}${teamBlock(m.tb, tlb, tOUb)}</div>
+    </div>
+    <div class="modal-section">
+      <p style="font-size:11px;color:#888;line-height:1.5">Basado en datos reales de tarjetas por equipo (temporada 2025/26). El árbitro designado puede influir en el total real — úsalo como referencia de tendencia.</p>
+    </div>`;
+
+  const html = `<div class="modal-box">
+    <div class="modal-hdr">
+      <div><div class="modal-title">${m.ta} vs ${m.tb}</div><div class="modal-sub">${m.fecha} · ${m.played?'Jugado':'Pendiente'}</div></div>
+      <button class="modal-close" onclick="document.getElementById('mls-match-modal').remove()">&#x2715;</button>
+    </div>
+    <div class="modal-section" style="border-bottom:1px solid #f0f0f0">
+      <div class="modal-sec-title">Probabilidades de victoria</div>
+      <div class="probs-row">
+        <div class="pbox${m.pw_a===maxP?' hi':''}"><div class="pv">${Math.round(m.pw_a*100)}%</div><div class="pl">Gana ${m.ta.split(' ')[0]}</div></div>
+        <div class="pbox${m.pd===maxP&&m.pw_a!==maxP?' hi':''}"><div class="pv">${Math.round(m.pd*100)}%</div><div class="pl">Empate</div></div>
+        <div class="pbox${m.pw_b===maxP&&m.pw_a!==maxP&&m.pd!==maxP?' hi':''}"><div class="pv">${Math.round(m.pw_b*100)}%</div><div class="pl">Gana ${m.tb.split(' ')[0]}</div></div>
+      </div>
+    </div>
+    <div style="display:flex;border-bottom:1px solid #e0e0e0;background:#fafafa">
+      <button id="mls-mtab-goles" onclick="mlsSwitchModalTab('goles')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid #111;color:#111;font-family:inherit">⚽ Goles</button>
+      <button id="mls-mtab-corners" onclick="mlsSwitchModalTab('corners')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit">📐 Corners</button>
+      <button id="mls-mtab-tarjetas" onclick="mlsSwitchModalTab('tarjetas')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit">🟨 Tarjetas</button>
+      ${isUpset ? `<button id="mls-mtab-upset" onclick="mlsSwitchModalTab('upset')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;background:#fef9e7;cursor:pointer;border-bottom:2px solid transparent;color:#92400e;font-family:inherit">🚨 Sorpresa</button>` : ''}
+    </div>
+    <div id="mls-mtab-content-goles">${golesHtml}</div>
+    <div id="mls-mtab-content-corners" style="display:none">${cornersHtml}</div>
+    <div id="mls-mtab-content-tarjetas" style="display:none">${tarjetasHtml}</div>
+    ${isUpset ? `<div id="mls-mtab-content-upset" style="display:none">${upsetHtml}</div>` : ''}
+  </div>`;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'mls-match-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto';
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
+  overlay.innerHTML = html;
+  document.body.appendChild(overlay);
+}
+
+function mlsSwitchModalTab(tab){
+  ['goles','corners','tarjetas','upset'].forEach(t=>{
+    const btn = document.getElementById('mls-mtab-'+t);
+    const content = document.getElementById('mls-mtab-content-'+t);
+    if(!btn||!content) return;
+    const active = t===tab;
+    btn.style.borderBottom = active?'2px solid #111':'2px solid transparent';
+    btn.style.color = active?'#111':'#888';
+    btn.style.fontWeight = active?'600':'400';
+    content.style.display = active?'block':'none';
+  });
+}
+
+function mlsIsMatchPast(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const today = new Date(); today.setHours(23,59,59,0);
+  return d <= today;
+}
+
+function mlsSetResult(ta, tb, idx, val){
+  const key = ta+'|'+tb;
+  const v = parseInt(val);
+  if(!MLS_RR[key]) MLS_RR[key] = [undefined, undefined];
+  if(isNaN(v)||val===''){ MLS_RR[key][idx] = undefined; mlsSaveToStorage(); return; }
+  MLS_RR[key][idx] = v;
+  mlsSaveToStorage();
+  if(MLS_RR[key][0]!==undefined && MLS_RR[key][1]!==undefined){
+    saveToSupabase('MLS_'+MLS_SEASON+'_'+key, MLS_RR[key][0], MLS_RR[key][1], 'mls').then(ok=>{
+      if(!ok) alert('⚠️ No se pudo guardar '+ta+' vs '+tb+' en la nube (sí quedó guardado en este dispositivo). Revisa la consola (F12) para más detalle.');
+    });
+    mlsRenderAdminInput();
+    mlsRenderStandings();
+    mlsRenderPartidos();
+  }
+}
+
+function mlsRenderAdminInput(){
+  const cont = document.getElementById('mcont-mls');
+  if(!cont) return;
+  const fechaKeys = Object.keys(MLS_FIXTURES);
+  let html = `<div style="background:#fffbea;border:1.5px solid #f5c518;border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:#856404">
+    💡 Liga MX no tiene sincronización automática — el calendario se actualiza a mano cada semana, e ingresa cada resultado apenas se juegue.
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
+    <button onclick="mlsSaveAll()" id="mls-save-all-btn" style="padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500;font-size:13px">💾 Guardar todos los resultados</button>
+    <span id="mls-save-all-status" style="font-size:12px;color:#1a5e34"></span>
+  </div>
+  <div class="rfilt" style="margin-bottom:1rem">
+    <button class="rfbtn${MLS_FECHA_FILTER==='all'?' active':''}" onclick="mlsFiltFechaAdmin('all')">Todas</button>
+    ${fechaKeys.map(fk=>`<button class="rfbtn${MLS_FECHA_FILTER===fk?' active':''}" onclick="mlsFiltFechaAdmin('${fk}')">${fk}</button>`).join('')}
+  </div>`;
+
+  const fechasToShow = MLS_FECHA_FILTER_ADMIN==='all' ? fechaKeys : [MLS_FECHA_FILTER_ADMIN];
+  fechasToShow.forEach(fecha=>{
+    const matches = MLS_FIXTURES[fecha];
+    const playedCount = matches.filter(m=>mlsGetResult(m.ta,m.tb)).length;
+    const pendingPast = matches.filter(m=>!mlsGetResult(m.ta,m.tb) && mlsIsMatchPast(m.date)).length;
+    html += `<p class="slabel">${fecha} <span style="font-size:10px;color:#aaa;font-weight:400;text-transform:none">· ${playedCount}/${matches.length} jugados${pendingPast>0?` · <span style="color:#856404">⚠️ ${pendingPast} por ingresar</span>`:''}</span></p><div class="rgrid">`;
+    matches.forEach(m=>{
+      const real = mlsGetResult(m.ta, m.tb);
+      const pl = !!real;
+      const past = !pl && mlsIsMatchPast(m.date);
+      const dateLabel = new Date(m.date+'T00:00:00').toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
+      const rowClass = pl ? ' played' : (past ? ' needs-result' : '');
+      const warningTag = past ? '<span class="needs-tag">⚠️ Ingresar</span>' : '';
+      html += `<div class="mrow${rowClass}">
+        <span class="ta${pl&&real.ga>real.gb?' wt':''}" style="font-size:12px">${m.ta}</span>
+        <input class="sinp" type="number" min="0" max="15" value="${pl?real.ga:''}" placeholder="-" onchange="mlsSetResult('${m.ta}','${m.tb}',0,this.value)">
+        <span class="sep">:</span>
+        <input class="sinp" type="number" min="0" max="15" value="${pl?real.gb:''}" placeholder="-" onchange="mlsSetResult('${m.ta}','${m.tb}',1,this.value)">
+        <span class="tb${pl&&real.gb>real.ga?' wt':''}" style="font-size:12px">${m.tb}</span>
+        ${warningTag}
+        <span style="font-size:9px;color:#999;grid-column:1/-1;text-align:center;margin-top:-2px">${dateLabel}</span>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  cont.innerHTML = html;
+}
+let MLS_FECHA_FILTER_ADMIN = 'all';
+function mlsFiltFechaAdmin(fecha){
+  MLS_FECHA_FILTER_ADMIN = fecha;
+  mlsRenderAdminInput();
+}
+
+async function mlsSaveAll(){
+  const btn = document.getElementById('mls-save-all-btn');
+  const status = document.getElementById('mls-save-all-status');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
+  mlsSaveToStorage();
+  let okCount = 0;
+  let failed = [];
+  for(const [key, r] of Object.entries(MLS_RR)){
+    if(r && r[0]!==undefined && r[1]!==undefined){
+      try{
+        const ok = await saveToSupabase('MLS_'+MLS_SEASON+'_'+key, r[0], r[1], 'mls');
+        if(ok) okCount++; else failed.push(key);
+      } catch(e){
+        console.warn('Fallo guardando', key, e);
+        failed.push(key);
+      }
+    }
+  }
+  if(btn){ btn.disabled = false; btn.textContent = '💾 Guardar todos los resultados'; }
+  if(status){
+    if(failed.length===0){
+      status.textContent = `✅ ${okCount} resultado(s) guardados en la nube (confirmado)`;
+      status.style.color = '#1a5e34';
+    } else {
+      status.textContent = `⚠️ ${okCount} guardados, ${failed.length} FALLARON: ${failed.join(', ')} — revisa la consola (F12)`;
+      status.style.color = '#c00';
+    }
+  }
+}
+
+const MLS_LS_KEY = 'mls_results';
+
+function mlsSaveToStorage(){
+  try{
+    localStorage.setItem(MLS_LS_KEY, JSON.stringify({ MLS_RR, savedAt: new Date().toISOString() }));
+  } catch(e){ console.warn('LigaMX: no se pudo guardar en localStorage:', e); }
+}
+function mlsLoadFromStorage(){
+  try{
+    const raw = localStorage.getItem(MLS_LS_KEY);
+    if(!raw) return false;
+    const data = JSON.parse(raw);
+    if(data.MLS_RR) MLS_RR = data.MLS_RR;
+    return true;
+  } catch(e){ return false; }
+}
+
+async function mlsLoadFromSupabase(){
+  try{
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/resultados?tipo=eq.mls&select=*&limit=5000`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    if(!res.ok){
+      const msg = await res.text().catch(()=>'');
+      console.warn('Supabase (LigaMX) respondió con error:', res.status, msg);
+      return { ok:false, count:0, error: `HTTP ${res.status}` };
+    }
+    const rows = await res.json();
+    const seasonPrefix = MLS_SEASON + '_';
+    let count = 0;
+    rows.forEach(r=>{
+      if(!r.clave || !r.clave.startsWith('MLS_')) return;
+      const rest = r.clave.slice(7);
+      if(rest.startsWith(seasonPrefix)){
+        const clave = rest.slice(seasonPrefix.length);
+        MLS_RR[clave] = [r.goles_local, r.goles_visita];
+        count++;
+      }
+    });
+    return { ok:true, count, totalRows: rows.length, error:null };
+  } catch(e){
+    console.warn('Error cargando LigaMX desde Supabase:', e);
+    return { ok:false, count:0, error: String(e && e.message || e) };
+  }
+}
+
+function mlsRefreshModel(){
+  const myEpoch = COMP_EPOCH;
+  const btn = document.getElementById('btnrun');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Actualizando...'; }
+  setTimeout(()=>{
+    if(COMP_EPOCH!==myEpoch){ if(btn){ btn.disabled=false; } return; }
+    mlsRenderStandings();
+    mlsRenderPartidos();
+    if(IS_ADMIN) mlsRenderAdminInput();
+    if(btn){ btn.disabled = false; btn.textContent = '🔄 Actualizar'; }
+    const hdrSub = document.getElementById('hdr-sub');
+    if(hdrSub){
+      const now = new Date();
+      hdrSub.innerHTML = '✅ Actualizado a las ' + now.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    }
+  }, 200);
+}
+
+async function mlsInitApp(){
+  const myEpoch = COMP_EPOCH;
+  mlsInitStr();
+  mlsLoadFromStorage();
+
+  mlsRenderStandings();
+  mlsRenderPartidos();
+  if(IS_ADMIN) mlsRenderAdminInput();
+
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.style.display='';
+    if(t.textContent.includes('Bracket')) t.style.display='none';
+    if(t.textContent.includes('Resultados') && !IS_ADMIN) t.style.display='none';
+    if(t.textContent.includes('Grupos')) t.innerHTML='📊 Tabla';
+    if(t.textContent.includes('Partidos')) t.innerHTML='📅 Partidos';
+  });
+
+  const rfilt = document.getElementById('mundial-rfilt');
+  if(rfilt) rfilt.style.display = 'none';
+
+  const btn = document.getElementById('btnrun');
+  if(btn){
+    btn.onclick = mlsRefreshModel;
+    btn.textContent = '🔄 Actualizar';
+  }
+  const btnSync = document.getElementById('btn-sync');
+  if(btnSync) btnSync.style.display = 'none';
+
+  const scardsEl = document.getElementById('scards');
+  const rbodyEl = document.getElementById('rbody');
+  const trackerContEl = document.getElementById('tracker-cont');
+  if(scardsEl) scardsEl.innerHTML = '<div class="infobox" style="grid-column:1/-1">Probabilidades de playoffs por conferencia — disponible más adelante en la temporada.</div>';
+  if(rbodyEl) rbodyEl.innerHTML = '';
+  if(trackerContEl) trackerContEl.innerHTML = '<div class="infobox">Tracker de aciertos — disponible después de que se jueguen las primeras fechas con resultados ingresados.</div>';
+
+  document.getElementById('hdr-sub').innerHTML = '☁️ Cargando resultados desde la nube...';
+
+  const result = await mlsLoadFromSupabase();
+  if(COMP_EPOCH!==myEpoch) return;
+
+  mlsRenderStandings();
+  mlsRenderPartidos();
+  if(IS_ADMIN) mlsRenderAdminInput();
+
+  const hdrSub = document.getElementById('hdr-sub');
+  if(hdrSub){
+    if(result && result.ok){
+      hdrSub.innerHTML = `✅ ${result.count} resultado(s) de MLS cargados desde la nube (de ${result.totalRows} en total) · Temporada 2026`;
     } else {
       hdrSub.innerHTML = `⚠️ No se pudo cargar desde la nube (${result ? result.error : 'error desconocido'}) — mostrando solo lo guardado en este dispositivo`;
     }
