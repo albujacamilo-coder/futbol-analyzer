@@ -335,90 +335,76 @@ const TD={
 const HOME={México:0.15,"EE.UU.":0.15,"Canadá":0.15};
 
 // ── ÍNDICE DE CORNERS (1-10) ──────────────────────────────────────────────────
-// Basado en estilo de juego histórico: posesión por bandas, presión alta,
-// juego directo. Fuente: promedios mundiales y Euros históricos.
-// Alto (7-10): equipos de posesión y ataque por bandas
-// Medio (5-6): equilibrados
-// Bajo (2-4): defensivos/reactivos o sin historia suficiente
 const CORNER_IDX = {
-  "Argentina":    8.2,  // posesión + presión alta, muchos corners históricos
-  "Brasil":       8.5,  // ataque por bandas, posesión dominante
-  "Colombia":     6.8,  // ofensivo pero menos sistemático
-  "Uruguay":      5.8,  // defensivo-sólido, menos corners generados
-  "Ecuador":      5.2,  // equilibrado, estilo directo
-  "Paraguay":     5.0,  // defensivo, contra-ataque
-  "España":       9.0,  // posesión extrema, muchos corners en cada torneo
-  "Francia":      7.8,  // potencia ofensiva + presión alta
-  "Inglaterra":   7.5,  // directo + set-pieces, muy orientado a corners
-  "Portugal":     7.2,  // ofensivo, Ronaldo-era heredado
-  "Alemania":     7.8,  // presión alta, ataque sistemático
-  "Países Bajos": 8.0,  // posesión + ataque en banda
-  "Noruega":      6.5,  // directo, físico
-  "Croacia":      6.8,  // técnico, posesión media
-  "Bélgica":      7.0,  // ofensivo, juego por bandas
-  "Suiza":        6.2,  // organizado, no muy ofensivo
-  "Austria":      6.5,  // presión media-alta
-  "Turquía":      6.3,  // transiciones, no mucho de corners
-  "Chequia":      6.0,  // equilibrado
-  "Suecia":       6.8,  // físico, set-pieces fuertes
-  "Bosnia":       5.5,  // directo, defensivo
-  "Escocia":      6.5,  // físico, directo, histórico en corners
-  "México":       6.5,  // técnico, moderado en corners
-  "EE.UU.":       6.8,  // físico, presión alta
-  "Canadá":       6.0,  // físico, directo
-  "Haití":        4.0,  // defensivo, pocos recursos ofensivos
-  "Panamá":       4.5,  // defensivo, bloque bajo
-  "Curazao":      3.8,  // sin historial mundialista
-  "Japón":        7.2,  // técnico, posesión, muchos corners históricos
-  "Corea del Sur":6.5,  // presión alta, técnico
-  "Irán":         5.2,  // defensivo, organizado
-  "Arabia Saudita":4.8, // transiciones, no corners
-  "Australia":    5.8,  // físico, directo
-  "Uzbekistán":   5.0,  // sin historial
-  "Qatar":        4.2,  // defensivo, poco ofensivo
-  "Iraq":         4.8,  // defensivo, limitado
-  "Jordania":     4.5,  // defensivo
-  "Marruecos":    6.8,  // organizado, presión media, Qatar 2022 sorpresa
-  "Senegal":      6.2,  // físico, técnico
-  "Egipto":       5.5,  // defensivo, contra-ataque
-  "Costa de Marfil":6.0,// físico, técnico
-  "Ghana":        5.8,  // técnico, físico
-  "Sudáfrica":    5.0,  // físico, directo
-  "Túnez":        5.2,  // organizado, defensivo
-  "Argelia":      5.5,  // técnico, moderado
-  "DR Congo":     4.8,  // físico, limitado
-  "Cabo Verde":   4.2,  // sin historial mundialista
-  "Nueva Zelanda":4.5   // defensivo, sin mucha presión
+  "Argentina":    8.2,
+  "Brasil":       8.5,
+  "Colombia":     6.8,
+  "Uruguay":      5.8,
+  "Ecuador":      5.2,
+  "Paraguay":     5.0,
+  "España":       9.0,
+  "Francia":      7.8,
+  "Inglaterra":   7.5,
+  "Portugal":     7.2,
+  "Alemania":     7.8,
+  "Países Bajos": 8.0,
+  "Noruega":      6.5,
+  "Croacia":      6.8,
+  "Bélgica":      7.0,
+  "Suiza":        6.2,
+  "Austria":      6.5,
+  "Turquía":      6.3,
+  "Chequia":      6.0,
+  "Suecia":       6.8,
+  "Bosnia":       5.5,
+  "Escocia":      6.5,
+  "México":       6.5,
+  "EE.UU.":       6.8,
+  "Canadá":       6.0,
+  "Haití":        4.0,
+  "Panamá":       4.5,
+  "Curazao":      3.8,
+  "Japón":        7.2,
+  "Corea del Sur":6.5,
+  "Irán":         5.2,
+  "Arabia Saudita":4.8,
+  "Australia":    5.8,
+  "Uzbekistán":   5.0,
+  "Qatar":        4.2,
+  "Iraq":         4.8,
+  "Jordania":     4.5,
+  "Marruecos":    6.8,
+  "Senegal":      6.2,
+  "Egipto":       5.5,
+  "Costa de Marfil":6.0,
+  "Ghana":        5.8,
+  "Sudáfrica":    5.0,
+  "Túnez":        5.2,
+  "Argelia":      5.5,
+  "DR Congo":     4.8,
+  "Cabo Verde":   4.2,
+  "Nueva Zelanda":4.5
 };
 
-// ── CÁLCULO xCorners (Poisson) ───────────────────────────────────────────────
-// BASE_C: promedio de corners por equipo en mundiales históricos (~5 por equipo)
-// El lambda de cada equipo = BASE_C * (idx_ataque / 5.5) * (idx_defensivo_rival / 5.5)
-// idx_defensivo = 10 - CORNER_IDX[rival] (un equipo muy ofensivo concede más corners al rival)
 const BASE_C = 5.0;
 
 function cornerCalc(ta, tb) {
   const ia = CORNER_IDX[ta] || 5.5;
   const ib = CORNER_IDX[tb] || 5.5;
-  // Corners generados por A dependen de su ataque y la defensiva de B
-  // Equipo muy ofensivo (alto idx) defiende menos → concede más corners al rival
-  const defA = (10 - ia) / 5.5; // qué tan bien defiende A (evita corners propios)
+  const defA = (10 - ia) / 5.5;
   const defB = (10 - ib) / 5.5;
   const la = Math.max(1.5, BASE_C * (ia / 5.5) * defB);
   const lb = Math.max(1.5, BASE_C * (ib / 5.5) * defA);
   return [+la.toFixed(2), +lb.toFixed(2)];
 }
 
-// Probabilidad acumulada Over X con Poisson
 function poissonOver(lambda, line) {
-  // P(X > line) = 1 - P(X <= floor(line))
   const k = Math.floor(line);
   let cumul = 0;
   for (let i = 0; i <= k; i++) cumul += pPmf(i, lambda);
   return Math.max(0, Math.min(1, 1 - cumul));
 }
 
-// Genera tabla de O/U para una línea dada
 function cornerOUTable(lambda, lines) {
   return lines.map(line => {
     const pOver  = poissonOver(lambda, line);
@@ -427,76 +413,67 @@ function cornerOUTable(lambda, lines) {
   });
 }
 
-// ── ÍNDICE DE AGRESIVIDAD (tarjetas) ─────────────────────────────────────────
-// Escala 1-10 basada en historial de tarjetas en competiciones internacionales
-// Alto (7-10): equipos físicos, presión alta, historial de muchas tarjetas
-// Medio (4-6): equilibrados
-// Bajo (1-3): disciplinados, técnicos
 const CARD_IDX = {
-  "Argentina":     7.8,  // historial muy agresivo, CONMEBOL
-  "Brasil":        7.2,  // físico, presión alta
-  "Colombia":      7.5,  // uno de los más agresivos de CONMEBOL
-  "Uruguay":       8.0,  // históricamente muy agresivo
-  "Ecuador":       6.5,  // moderado
-  "Paraguay":      7.0,  // físico, directo
-  "España":        6.0,  // técnico pero presión alta genera tarjetas
-  "Francia":       6.2,  // físico y técnico
-  "Inglaterra":    6.5,  // físico, Premier League style
-  "Portugal":      6.0,  // técnico, moderado
-  "Alemania":      5.5,  // organizado, pocas tarjetas innecesarias
-  "Países Bajos":  6.2,  // físico, presión alta
-  "Noruega":       6.0,  // físico, directo
-  "Croacia":       6.5,  // duro, Champions League style
-  "Bélgica":       6.0,  // técnico-físico
-  "Suiza":         5.0,  // muy organizado, disciplinado
-  "Austria":       5.8,  // moderado
-  "Turquía":       7.0,  // históricamente agresivo
-  "Chequia":       5.5,  // moderado
-  "Suecia":        5.8,  // físico pero disciplinado
-  "Bosnia":        6.5,  // físico, directo
-  "Escocia":       6.8,  // físico, Premier style
-  "México":        6.8,  // CONCACAF, físico
-  "EE.UU.":        6.0,  // moderno, menos tarjetas
-  "Canadá":        6.2,  // físico, en desarrollo
-  "Haití":         6.5,  // físico, limitado técnicamente
-  "Panamá":        7.0,  // físico, defensivo agresivo
-  "Curazao":       6.0,  // sin historial suficiente
-  "Japón":         4.0,  // uno de los más disciplinados del mundo
-  "Corea del Sur": 5.5,  // moderno, menos tarjetas que antes
-  "Irán":          6.8,  // físico, defensivo agresivo
-  "Arabia Saudita":6.5,  // físico
-  "Australia":     6.0,  // moderado
-  "Uzbekistán":    6.2,  // sin historial suficiente
-  "Qatar":         6.0,  // moderado
-  "Iraq":          7.0,  // físico, agresivo
-  "Jordania":      6.5,  // físico
-  "Marruecos":     6.5,  // Qatar 2022 mostró ser físico
-  "Senegal":       6.8,  // físico, CAF style
-  "Egipto":        6.5,  // físico
-  "Costa de Marfil":7.0, // físico, CAF
-  "Ghana":         6.8,  // físico
-  "Sudáfrica":     6.5,  // físico
-  "Túnez":         6.2,  // moderado
-  "Argelia":       6.5,  // físico
-  "DR Congo":      7.0,  // físico, CAF
-  "Cabo Verde":    6.0,  // sin historial
-  "Nueva Zelanda": 5.0   // disciplinado, OFC
+  "Argentina":     7.8,
+  "Brasil":        7.2,
+  "Colombia":      7.5,
+  "Uruguay":       8.0,
+  "Ecuador":       6.5,
+  "Paraguay":      7.0,
+  "España":        6.0,
+  "Francia":       6.2,
+  "Inglaterra":    6.5,
+  "Portugal":      6.0,
+  "Alemania":      5.5,
+  "Países Bajos":  6.2,
+  "Noruega":       6.0,
+  "Croacia":       6.5,
+  "Bélgica":       6.0,
+  "Suiza":         5.0,
+  "Austria":       5.8,
+  "Turquía":       7.0,
+  "Chequia":       5.5,
+  "Suecia":        5.8,
+  "Bosnia":        6.5,
+  "Escocia":       6.8,
+  "México":        6.8,
+  "EE.UU.":        6.0,
+  "Canadá":        6.2,
+  "Haití":         6.5,
+  "Panamá":        7.0,
+  "Curazao":       6.0,
+  "Japón":         4.0,
+  "Corea del Sur": 5.5,
+  "Irán":          6.8,
+  "Arabia Saudita":6.5,
+  "Australia":     6.0,
+  "Uzbekistán":    6.2,
+  "Qatar":         6.0,
+  "Iraq":          7.0,
+  "Jordania":      6.5,
+  "Marruecos":     6.5,
+  "Senegal":       6.8,
+  "Egipto":        6.5,
+  "Costa de Marfil":7.0,
+  "Ghana":         6.8,
+  "Sudáfrica":     6.5,
+  "Túnez":         6.2,
+  "Argelia":       6.5,
+  "DR Congo":      7.0,
+  "Cabo Verde":    6.0,
+  "Nueva Zelanda": 5.0
 };
 
-// BASE_T: promedio de tarjetas por equipo en mundiales (~2.2 por equipo por partido)
 const BASE_T = 2.0;
 
 function cardCalc(ta, tb){
   const ia = CARD_IDX[ta] || 6.0;
   const ib = CARD_IDX[tb] || 6.0;
-  // Tarjetas generadas también dependen de la agresividad del rival
-  // Partido entre dos equipos agresivos → más tarjetas totales
   const la = Math.max(0.5, BASE_T * (ia / 6.0) * (0.7 + 0.3 * ib / 6.0));
   const lb = Math.max(0.5, BASE_T * (ib / 6.0) * (0.7 + 0.3 * ia / 6.0));
   return [+la.toFixed(2), +lb.toFixed(2)];
 }
 
-// ── HTML SECCIÓN CORNERS EN MODAL ────────────────────────────────────────────
 function cornersModalHtml(ta, tb) {
   const [la, lb] = cornerCalc(ta, tb);
   const total = +(la + lb).toFixed(2);
@@ -508,7 +485,6 @@ function cornersModalHtml(ta, tb) {
   const ouA      = cornerOUTable(la,    teamLines);
   const ouB      = cornerOUTable(lb,    teamLines);
 
-  // Fila de tabla O/U
   function ouRow(r, isGlobal) {
     const hiOver  = r.pOver  >= (isGlobal ? 0.55 : 0.55);
     const hiUnder = r.pUnder >= (isGlobal ? 0.55 : 0.55);
@@ -532,7 +508,6 @@ function cornersModalHtml(ta, tb) {
     '<div class="modal-section">',
       '<div class="modal-sec-title">⚽ Análisis de Corners</div>',
 
-      // Resumen xCorners
       '<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;background:#f5f5f5;border-radius:8px;padding:10px 14px;margin-bottom:10px">',
         '<div style="text-align:right">',
           '<div style="font-size:16px;font-weight:700;color:#111">' + la + '</div>',
@@ -548,7 +523,6 @@ function cornersModalHtml(ta, tb) {
         '</div>',
       '</div>',
 
-      // Global O/U
       '<div style="font-size:10px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Over / Under — Partido completo</div>',
       '<div class="ou-btts"><div class="ou-row" style="flex-wrap:wrap;gap:4px">',
         globalOU.map(r => {
@@ -569,7 +543,6 @@ function cornersModalHtml(ta, tb) {
         }).join(''),
       '</div></div>',
 
-      // Por equipo
       '<div style="font-size:10px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.04em;margin:10px 0 6px">Over / Under — Por equipo</div>',
       '<div class="ou-teams-grid">',
         teamCornerBlock(ta, la, ouA),
@@ -618,22 +591,22 @@ const MATCH_DATES = {
   "Inglaterra|Croacia":"2026-06-17","Ghana|Panamá":"2026-06-17",
   "Inglaterra|Ghana":"2026-06-23","Panamá|Croacia":"2026-06-23",
   // ── Ronda de 32 — Calendario oficial FIFA 2026 ──
-  "M73":"2026-06-28",  // Sudáfrica vs Canadá ✅
-  "M74":"2026-06-29",  // Alemania vs Paraguay
-  "M75":"2026-06-29",  // Países Bajos vs Marruecos
-  "M76":"2026-06-29",  // Brasil vs Japón
-  "M77":"2026-06-30",  // Costa de Marfil vs Noruega
-  "M78":"2026-06-30",  // Francia vs Suecia
-  "M79":"2026-06-30",  // México vs Ecuador
-  "M80":"2026-07-01",  // Inglaterra vs DR Congo
-  "M81":"2026-07-01",  // Bélgica vs Senegal
-  "M82":"2026-07-01",  // EE.UU. vs Bosnia
-  "M83":"2026-07-02",  // España vs Austria
-  "M84":"2026-07-02",  // Suiza vs Argelia
-  "M85":"2026-07-02",  // Portugal vs Croacia
-  "M86":"2026-07-03",  // Argentina vs Cabo Verde
-  "M87":"2026-07-03",  // Colombia vs Ghana
-  "M88":"2026-07-03",  // Australia vs Egipto
+  "M73":"2026-06-28",
+  "M74":"2026-06-29",
+  "M75":"2026-06-29",
+  "M76":"2026-06-29",
+  "M77":"2026-06-30",
+  "M78":"2026-06-30",
+  "M79":"2026-06-30",
+  "M80":"2026-07-01",
+  "M81":"2026-07-01",
+  "M82":"2026-07-01",
+  "M83":"2026-07-02",
+  "M84":"2026-07-02",
+  "M85":"2026-07-02",
+  "M86":"2026-07-03",
+  "M87":"2026-07-03",
+  "M88":"2026-07-03",
   // ── Octavos (M89-M96) ──
   "M89":"2026-07-04","M90":"2026-07-04",
   "M91":"2026-07-05","M92":"2026-07-05",
@@ -644,6 +617,8 @@ const MATCH_DATES = {
   "M99":"2026-07-10","M100":"2026-07-10",
   // ── Semis (M101-M102) ──
   "M101":"2026-07-14","M102":"2026-07-15",
+  // ── 3er y 4to puesto (M103) ──
+  "M103":"2026-07-18",
   // ── Final (M104) ──
   "M104":"2026-07-19"
 };
@@ -786,20 +761,17 @@ function simGrp(ms,u,fx){
   return Object.entries(s).sort((a,b)=>(b[1].pts-a[1].pts)||((b[1].gf-b[1].ga)-(a[1].gf-a[1].ga))||(b[1].gf-a[1].gf)).map(([n,d])=>({name:n,...d}));
 }
 
-// Mapeo directo: cada slot KO recibe el 3er lugar de un grupo específico
-// según las reglas oficiales FIFA de combinaciones para R32 2026
 const THIRD_SLOT_GROUPS={
-  "M74":"D", // Alemania (E1) vs 3°D = Paraguay
-  "M78":"F", // Francia (I1) vs 3°F = Suecia
-  "M79":"E", // México (A1) vs 3°E = Ecuador
-  "M80":"K", // Inglaterra (L1) vs 3°K = DR Congo
-  "M81":"I", // Bélgica (G1) vs 3°I = Senegal
-  "M82":"B", // EE.UU. (D1) vs 3°B = Bosnia
-  "M84":"J", // Suiza (B1) vs 3°J = Argelia
-  "M87":"L", // Colombia (K1) vs 3°L = Ghana
+  "M74":"D",
+  "M78":"F",
+  "M79":"E",
+  "M80":"K",
+  "M81":"I",
+  "M82":"B",
+  "M84":"J",
+  "M87":"L",
 };
 function assignThirds(gr){
-  // Tercer lugar de cada grupo, ordenados de mejor a peor
   const thirds=[];
   for(const g of Object.keys(GRP)){
     const row=gr[g][2];
@@ -809,7 +781,6 @@ function assignThirds(gr){
   const best8groups=new Set(thirds.slice(0,8).map(t=>t.group));
 
   const asgn={};
-  // PASO 1: asignación directa — si el grupo deseado del slot calificó, se usa directo
   for(const mid of Object.keys(THIRD_SLOT_GROUPS)){
     const wantedGroup=THIRD_SLOT_GROUPS[mid];
     if(best8groups.has(wantedGroup)){
@@ -817,7 +788,6 @@ function assignThirds(gr){
       asgn[mid]=t.name;
     }
   }
-  // PASO 2: para slots cuyo grupo NO calificó, usar el mejor tercero que SÍ calificó y aún no fue asignado
   const usedGroups=new Set(Object.values(asgn).map(name=>thirds.find(t=>t.name===name)?.group));
   const leftoverThirds=thirds.filter(t=>best8groups.has(t.group)&&!usedGroups.has(t.group));
   for(const mid of Object.keys(THIRD_SLOT_GROUPS)){
@@ -874,7 +844,6 @@ function calcBD(u){
   const kofx=getKOFx();
   function det(ta,tb,mid){
     const a=matchAnal(ta,tb,u);
-    // Si el partido ya tiene resultado real, usar el ganador real (considerando penales)
     if(mid&&kofx[mid]){
       const r=kofx[mid];
       const realWinner=getKOWinner(mid,ta,tb,r[0],r[1]);
@@ -883,24 +852,23 @@ function calcBD(u){
     return{ta,tb,...a};
   }
   const p=pos,g=g3;
-  // R32 oficial FIFA 2026 — emparejamientos reales confirmados
   const r32=[
-    {id:"M73",...det(p("A",1).name,p("B",1).name,"M73")},        // Sudáfrica (A2) vs Canadá (B2)
-    {id:"M74",...det(p("E",0).name,g("M74").name,"M74")},          // Alemania (E1) vs Paraguay (3°D)
-    {id:"M75",...det(p("F",0).name,p("C",1).name,"M75")},          // Países Bajos (F1) vs Marruecos (C2)
-    {id:"M76",...det(p("C",0).name,p("F",1).name,"M76")},          // Brasil (C1) vs Japón (F2)
-    {id:"M77",...det(p("E",1).name,p("I",1).name,"M77")},          // Costa de Marfil (E2) vs Noruega (I2)
-    {id:"M78",...det(p("I",0).name,g("M78").name,"M78")},          // Francia (I1) vs Suecia (3°F)
-    {id:"M79",...det(p("A",0).name,g("M79").name,"M79")},          // México (A1) vs Ecuador (3°E)
-    {id:"M80",...det(p("L",0).name,g("M80").name,"M80")},          // Inglaterra (L1) vs DR Congo (3°K)
-    {id:"M81",...det(p("G",0).name,g("M81").name,"M81")},          // Bélgica (G1) vs Senegal (3°I)
-    {id:"M82",...det(p("D",0).name,g("M82").name,"M82")},          // EE.UU. (D1) vs Bosnia (3°B)
-    {id:"M83",...det(p("H",0).name,p("J",1).name,"M83")},          // España (H1) vs Austria (J2)
-    {id:"M84",...det(p("B",0).name,g("M84").name,"M84")},          // Suiza (B1) vs Argelia (3°J)
-    {id:"M85",...det(p("K",1).name,p("L",1).name,"M85")},          // Portugal (K2) vs Croacia (L2)
-    {id:"M86",...det(p("J",0).name,p("H",1).name,"M86")},          // Argentina (J1) vs Cabo Verde (H2)
-    {id:"M87",...det(p("K",0).name,g("M87").name,"M87")},          // Colombia (K1) vs Ghana (3°L)
-    {id:"M88",...det(p("D",1).name,p("G",1).name,"M88")},          // Australia (D2) vs Egipto (G2)
+    {id:"M73",...det(p("A",1).name,p("B",1).name,"M73")},
+    {id:"M74",...det(p("E",0).name,g("M74").name,"M74")},
+    {id:"M75",...det(p("F",0).name,p("C",1).name,"M75")},
+    {id:"M76",...det(p("C",0).name,p("F",1).name,"M76")},
+    {id:"M77",...det(p("E",1).name,p("I",1).name,"M77")},
+    {id:"M78",...det(p("I",0).name,g("M78").name,"M78")},
+    {id:"M79",...det(p("A",0).name,g("M79").name,"M79")},
+    {id:"M80",...det(p("L",0).name,g("M80").name,"M80")},
+    {id:"M81",...det(p("G",0).name,g("M81").name,"M81")},
+    {id:"M82",...det(p("D",0).name,g("M82").name,"M82")},
+    {id:"M83",...det(p("H",0).name,p("J",1).name,"M83")},
+    {id:"M84",...det(p("B",0).name,g("M84").name,"M84")},
+    {id:"M85",...det(p("K",1).name,p("L",1).name,"M85")},
+    {id:"M86",...det(p("J",0).name,p("H",1).name,"M86")},
+    {id:"M87",...det(p("K",0).name,g("M87").name,"M87")},
+    {id:"M88",...det(p("D",1).name,p("G",1).name,"M88")},
   ];
   const w32=r32.map(m=>m.winner);
   function mk(pairs,ids){ return pairs.map(([a,b],i)=>({id:ids[i],...det(a,b,ids[i])})); }
@@ -910,7 +878,9 @@ function calcBD(u){
   const wq=qf.map(m=>m.winner);
   const sf=mk([[wq[0],wq[1]],[wq[2],wq[3]]],["M101","M102"]);
   const ws=sf.map(m=>m.winner);
-  return{r32,r16,qf,sf,fin:mk([[ws[0],ws[1]]],["M104"])[0]};
+  const losers=sf.map(m=>m.winner===m.ta?m.tb:m.ta);
+  const third=mk([[losers[0],losers[1]]],["M103"])[0];
+  return{r32,r16,qf,sf,third,fin:mk([[ws[0],ws[1]]],["M104"])[0]};
 }
 function buildPD(u,fx){
   const data=[];
@@ -935,6 +905,13 @@ function buildPD(u,fx){
         data.push({round:k,rl:l,ta:m.ta,tb:m.tb,...a,played,real:played?[real[0],real[1]]:null,matchId:m.id});
       });
     });
+    if(BD.third){
+      const m=BD.third;
+      const a=matchAnal(m.ta,m.tb,u);
+      const real=kofx[m.id];
+      const played=!!real;
+      data.push({round:'third',rl:'3er y 4to puesto · 18 jul',ta:m.ta,tb:m.tb,...a,played,real:played?[real[0],real[1]]:null,matchId:m.id});
+    }
     if(BD.fin){
       const m=BD.fin;
       const a=matchAnal(m.ta,m.tb,u);
@@ -1102,7 +1079,8 @@ function renderBracket(){
     {id:'r16', label:'Octavos', matches:BD.r16, date:'4 – 7 jul'},
     {id:'qf',  label:'Cuartos', matches:BD.qf,  date:'9 – 11 jul'},
     {id:'sf',  label:'Semis',   matches:BD.sf,   date:'14 – 15 jul'},
-    {id:'fin', label:'🏆 Final', matches:[BD.fin], date:'19 jul'},
+    {id:'third', label:'🥉 3er/4to', matches:[BD.third], date:'18 jul'},
+    {id:'fin',  label:'🏆 Final', matches:[BD.fin], date:'19 jul'},
   ];
 
   function renderPhase(phaseId){
@@ -1187,8 +1165,9 @@ function renderBracket(){
   const hasR16=BD.r16.some(m=>ko[m.id]);
   const hasQF=BD.qf.some(m=>ko[m.id]);
   const hasSF=BD.sf.some(m=>ko[m.id]);
+  const hasThird=ko[BD.third.id];
   const hasFin=ko[BD.fin.id];
-  const defaultPhase=hasFin?'fin':hasSF?'sf':hasQF?'qf':hasR16?'r16':'r32';
+  const defaultPhase=hasFin?'fin':hasThird?'third':hasSF?'sf':hasQF?'qf':hasR16?'r16':'r32';
   renderPhase(defaultPhase);
 }
 
@@ -1204,8 +1183,6 @@ function renderPCard(m){
   const modalKey=(m.ta+'|'+m.tb).replace(/['"]/g,'');
 
   // ── UPSET DETECTOR ──
-  // Hay upset potencial si el underdog (equipo con menos probabilidad de ganar)
-  // tiene ≥30% de chance de ganar — señal de partido parejo o sorpresa posible
   const favWinP = Math.max(m.pw_a, m.pw_b);
   const undWinP = Math.min(m.pw_a, m.pw_b);
   const underdogTeam = m.pw_b > m.pw_a ? m.tb : m.ta;
@@ -1286,43 +1263,36 @@ function renderPartidos(){
   const todayStr=today.toISOString().split('T')[0];
   const tomorrowStr=tomorrow.toISOString().split('T')[0];
 
-  // Partidos de hoy
   const todayMatches=PD.filter(m=>{
     const d=getMatchDate(m.ta,m.tb);
     return d===todayStr;
   });
 
-  // Si no hay hoy, partidos de mañana
   const nextMatches=PD.filter(m=>{
     const d=getMatchDate(m.ta,m.tb);
     return d===tomorrowStr;
   });
 
-  // Ordenar por interés: sorpresas primero, luego más parejos
   function interestScore(m){
     const undP=Math.min(m.pw_a,m.pw_b);
     const isUpset=undP>=0.30&&Math.max(m.pw_a,m.pw_b)<0.60;
-    return isUpset?1:undP; // sorpresas arriba, luego más parejos
+    return isUpset?1:undP;
   }
   const todaySorted=[...todayMatches].sort((a,b)=>interestScore(b)-interestScore(a));
   const nextSorted=[...nextMatches].sort((a,b)=>interestScore(b)-interestScore(a));
 
-  // Búsqueda: filtrar por equipo o por partido (ej: "brasil marruecos" o "brasil vs marruecos")
   const sq=SEARCH_Q.toLowerCase().trim().replace(/\bvs\b/g,'').trim();
   const sqParts=sq.split(/\s+/).filter(Boolean);
 
   function matchesSearch(m){
     if(!sq) return true;
     const ta=m.ta.toLowerCase(), tb=m.tb.toLowerCase();
-    // Si hay dos términos, ambos deben estar en el partido (en cualquier orden)
     if(sqParts.length>=2){
       return sqParts.every(p=>ta.includes(p)||tb.includes(p));
     }
-    // Un solo término: busca en cualquier equipo
     return ta.includes(sq)||tb.includes(sq);
   }
 
-  // Partidos filtrados por fase y búsqueda
   const fd=(CRF==='all'?PD:PD.filter(m=>m.round===CRF)).filter(matchesSearch);
 
   if(!PD.length){ cont.innerHTML='<div class="infobox">No hay partidos todavía. Actualiza el modelo primero.</div>'; return; }
@@ -1342,7 +1312,6 @@ function renderPartidos(){
     </div>`;
   }
 
-  // ── Sección HOY ──
   if(todaySorted.length){
     const dateLabel=today.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
     html+=`<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:1rem">
@@ -1367,7 +1336,6 @@ function renderPartidos(){
     </div>`;
   }
 
-  // ── Lista completa con buscador ──
   html+=`<div style="margin-bottom:.8rem">
     <input id="match-search-input" type="text" placeholder="🔍 Buscar equipo o partido (ej: Brasil · Brasil Marruecos)" value="${SEARCH_Q}"
       oninput="filterMatches(this.value)"
@@ -1394,14 +1362,12 @@ let SEARCH_Q='';
 function filterMatches(val){
   SEARCH_Q=val||'';
   renderPartidos();
-  // Restaurar foco y cursor al final
   setTimeout(()=>{
     const inp=document.getElementById('match-search-input');
     if(inp){ inp.focus(); inp.setSelectionRange(SEARCH_Q.length,SEARCH_Q.length); }
   },10);
 }
 
-// ── FIX: openMatchModal ahora recibe clave "ta|tb" y busca en objeto ──
 function openMatchModal(key){
   if(!window._PCARDS) return;
   const m=window._PCARDS[key];
@@ -1447,7 +1413,6 @@ function openMatchModal(key){
   const pCb=(MCP[m.tb]?.p_champ||0).toFixed(1);
   const maxP=Math.max(m.pw_a,m.pd,m.pw_b);
 
-  // ── Corners data ──
   const [cla, clb] = cornerCalc(m.ta, m.tb);
   const cTotal = +(cla + clb).toFixed(2);
   const globalLines  = [5.5, 6.5, 7.5, 8.5, 9.5, 10.5];
@@ -1456,7 +1421,6 @@ function openMatchModal(key){
   const ouCA     = cornerOUTable(cla, teamLines);
   const ouCB     = cornerOUTable(clb, teamLines);
 
-  // Sistema de colores corners: verde ≥65%, amarillo 50-64%, gris <50%
   function cPillStyle(p) {
     if (p >= 0.65) return 'background:#d4edda;color:#1a5e34;border:1px solid #86efac';
     if (p >= 0.50) return 'background:#fff3cd;color:#856404;border:1px solid #fcd34d';
@@ -1477,7 +1441,6 @@ function openMatchModal(key){
       +'<tbody>'+rows.map(cOuRow).join('')+'</tbody></table></div>';
   }
 
-  // ── Cálculo primer gol ──
   const totalLambda = m.la + m.lb;
   const p_no_goal   = +Math.exp(-totalLambda).toFixed(3);
   const p_a_first   = +(m.la / totalLambda * (1 - p_no_goal)).toFixed(3);
@@ -1494,7 +1457,6 @@ function openMatchModal(key){
     </div>`;
   }
 
-  // ── Sección Goles (tab content) ──
   const golesHtml = [
     '<div class="modal-section">',
       '<div class="modal-sec-title">Expected Goals (xG)</div>',
@@ -1507,7 +1469,6 @@ function openMatchModal(key){
       '</div>',
     '</div>',
 
-    // ── Primer gol ──
     '<div class="modal-section">',
       '<div class="modal-sec-title">🥅 ¿Quién marca primero?</div>',
       '<div style="display:flex;gap:8px;align-items:stretch">',
@@ -1564,24 +1525,19 @@ function openMatchModal(key){
     '</div>',
   ].join('');
 
-  // ── Sección Corners (tab content) ──
   const cornersHtml = [
-    // Resumen visual corners
     '<div class="modal-section">',
       '<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:#f5f5f5;border-radius:10px;padding:14px 16px">',
-        // Equipo A
         '<div style="text-align:right">',
           '<div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">'+m.ta+'</div>',
           '<div style="font-size:28px;font-weight:700;color:#111;line-height:1">'+cla+'</div>',
           '<div style="font-size:10px;color:#aaa;margin-top:2px">corners esp.</div>',
         '</div>',
-        // Centro
         '<div style="text-align:center;padding:0 8px">',
           '<div style="font-size:9px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Total</div>',
           '<div style="font-size:32px;font-weight:700;color:#111;line-height:1">'+cTotal+'</div>',
           '<div style="font-size:9px;color:#aaa;margin-top:2px">esperados</div>',
         '</div>',
-        // Equipo B
         '<div style="text-align:left">',
           '<div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">'+m.tb+'</div>',
           '<div style="font-size:28px;font-weight:700;color:#111;line-height:1">'+clb+'</div>',
@@ -1589,7 +1545,6 @@ function openMatchModal(key){
         '</div>',
       '</div>',
     '</div>',
-    // O/U partido completo con sistema de colores
     '<div class="modal-section">',
       '<div class="modal-sec-title">Over / Under &mdash; Partido completo</div>',
       '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:5px">',
@@ -1620,42 +1575,33 @@ function openMatchModal(key){
     '</div>',
   ].join('');
 
-  // ── UPSET DATA ──
   const favTeam  = m.pw_a >= m.pw_b ? m.ta : m.tb;
   const undTeam  = m.pw_a >= m.pw_b ? m.tb : m.ta;
   const favP     = Math.max(m.pw_a, m.pw_b);
   const undP     = Math.min(m.pw_a, m.pw_b);
   const isUpset  = !m.played && undP >= 0.30 && favP < 0.60;
 
-  // Razones de sorpresa en lenguaje simple
   function upsetReasons(ta, tb, u_pw_a, u_pw_b, u_pd) {
     const reasons = [];
     const strA = STR[ta]||0.5, strB = STR[tb]||0.5;
     const diff = Math.abs(strA - strB);
 
-    // Equipos muy parejos en fuerza
     if(diff < 0.08) reasons.push({ icon:'⚖️', txt: 'Los dos equipos tienen una fuerza muy similar según el modelo — ninguno domina claramente al otro.' });
 
-    // El underdog tiene buena forma
     const undStr = STR[undTeam]||0.5;
     if(undStr > 0.55) reasons.push({ icon:'🔥', txt: undTeam+' llega en buen momento: su ranking y rendimiento reciente lo posicionan como un equipo peligroso, no un rival fácil.' });
 
-    // Partido muy abierto (empate alto)
     if(u_pd >= 0.22) reasons.push({ icon:'🤝', txt: 'Hay una probabilidad alta de empate ('+Math.round(u_pd*100)+'%), lo que significa que el partido puede decidirse por pequeños detalles o en la prórroga.' });
 
-    // xG cercanos
     if(Math.abs(m.la - m.lb) < 0.5) reasons.push({ icon:'📊', txt: 'Las oportunidades de gol esperadas son casi iguales ('+m.la+' vs '+m.lb+') — cualquiera puede marcar primero.' });
 
-    // Ventaja de ser underdog en torneos
     if(!reasons.length) reasons.push({ icon:'💡', txt: 'El modelo detecta que '+undTeam+' tiene una probabilidad real de ganar este partido, más de lo que sugiere ser el equipo menos favorito.' });
 
     return reasons;
   }
   const reasons = isUpset ? upsetReasons(m.ta, m.tb, m.pw_a, m.pw_b, m.pd) : [];
 
-  // ── HTML TAB SORPRESA ──
   const upsetHtml = isUpset ? [
-    // Banner de alerta
     '<div class="modal-section">',
       '<div style="background:#fef3c7;border:1.5px solid #fcd34d;border-radius:10px;padding:12px 14px;margin-bottom:4px">',
         '<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">🚨 El modelo detecta una posible sorpresa</div>',
@@ -1666,7 +1612,6 @@ function openMatchModal(key){
         '</div>',
       '</div>',
     '</div>',
-    // Razones
     '<div class="modal-section">',
       '<div class="modal-sec-title">¿Por qué puede pasar la sorpresa?</div>',
       '<div style="display:flex;flex-direction:column;gap:8px">',
@@ -1678,30 +1623,25 @@ function openMatchModal(key){
         }).join(''),
       '</div>',
     '</div>',
-    // Probabilidades clave
     '<div class="modal-section">',
       '<div class="modal-sec-title">Probabilidades clave del partido</div>',
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">',
-        // Gana el underdog
         '<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:12px;text-align:center">',
           '<div style="font-size:24px;font-weight:700;color:#92400e">'+Math.round(undP*100)+'%</div>',
           '<div style="font-size:11px;color:#78350f;margin-top:2px">Gana <strong>'+undTeam.split(' ')[0]+'</strong></div>',
           '<div style="font-size:10px;color:#a16207;margin-top:2px">(la sorpresa)</div>',
         '</div>',
-        // Gana el favorito
         '<div style="background:#f0f0f0;border-radius:10px;padding:12px;text-align:center">',
           '<div style="font-size:24px;font-weight:700;color:#333">'+Math.round(favP*100)+'%</div>',
           '<div style="font-size:11px;color:#555;margin-top:2px">Gana <strong>'+favTeam.split(' ')[0]+'</strong></div>',
           '<div style="font-size:10px;color:#888;margin-top:2px">(el favorito)</div>',
         '</div>',
-        // Empate
         '<div style="background:#f0f0f0;border-radius:10px;padding:12px;text-align:center;grid-column:1/-1">',
           '<div style="font-size:20px;font-weight:700;color:#333">'+Math.round(m.pd*100)+'%</div>',
           '<div style="font-size:11px;color:#555;margin-top:2px">Empate — el partido se va a prórroga o penales</div>',
         '</div>',
       '</div>',
     '</div>',
-    // BTTS y O/U como contexto adicional
     '<div class="modal-section">',
       '<div class="modal-sec-title">Contexto adicional</div>',
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">',
@@ -1717,7 +1657,6 @@ function openMatchModal(key){
     '</div>',
   ].join('') : '';
 
-  // ── Tarjetas data ──
   const [tla, tlb] = cardCalc(m.ta, m.tb);
   const tTotal = +(tla + tlb).toFixed(2);
   const cardGlobalLines = [2.5, 3.5, 4.5];
@@ -1726,7 +1665,6 @@ function openMatchModal(key){
   const cardTeamOUA  = cornerOUTable(tla,    cardTeamLines);
   const cardTeamOUB  = cornerOUTable(tlb,    cardTeamLines);
 
-  // Reutilizamos cPillStyle y cOuRow de corners
   function cardTeamBlock(name, lambda, rows){
     return '<div class="ou-team-block">'
       +'<div class="ou-team-name">'+name.split(' ')[0]+'</div>'
@@ -1742,7 +1680,6 @@ function openMatchModal(key){
   }
 
   const tarjetasHtml = [
-    // Disclaimer amigable
     '<div class="modal-section">',
       '<div style="background:#fef9e7;border:1px solid #fcd34d;border-radius:8px;padding:10px 12px;margin-bottom:4px;font-size:11px;color:#78350f;line-height:1.5">',
         '🟨 <strong>Basado en el índice histórico de agresividad</strong> de cada selección. ',
@@ -1750,7 +1687,6 @@ function openMatchModal(key){
       '</div>',
     '</div>',
 
-    // Resumen visual
     '<div class="modal-section">',
       '<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:#f5f5f5;border-radius:10px;padding:14px 16px">',
         '<div style="text-align:right">',
@@ -1771,7 +1707,6 @@ function openMatchModal(key){
       '</div>',
     '</div>',
 
-    // O/U partido completo
     '<div class="modal-section">',
       '<div class="modal-sec-title">Over / Under &mdash; Partido completo</div>',
       '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px">',
@@ -1794,7 +1729,6 @@ function openMatchModal(key){
       '</div>',
     '</div>',
 
-    // O/U por equipo
     '<div class="modal-section">',
       '<div class="modal-sec-title">Over / Under &mdash; Por equipo</div>',
       '<div class="ou-teams-grid">',
@@ -1807,7 +1741,6 @@ function openMatchModal(key){
   const html=[
     '<div class="modal-box">',
 
-    // ── Header siempre visible ──
     '<div class="modal-hdr">',
       '<div>',
         '<div class="modal-title">'+m.ta+' vs '+m.tb+'</div>',
@@ -1816,7 +1749,6 @@ function openMatchModal(key){
       '<button class="modal-close" onclick="closeMatchModal()">&#x2715;</button>',
     '</div>',
 
-    // ── Probabilidades de victoria siempre visibles ──
     '<div class="modal-section" style="border-bottom:1px solid #f0f0f0">',
       '<div class="modal-sec-title">Probabilidades de victoria</div>',
       '<div class="probs-row">',
@@ -1826,7 +1758,6 @@ function openMatchModal(key){
       '</div>',
     '</div>',
 
-    // ── Tabs: Goles / Corners / Tarjetas / Sorpresa (solo si aplica) ──
     '<div style="display:flex;border-bottom:1px solid #e0e0e0;background:#fafafa">',
       '<button id="mtab-goles" onclick="switchModalTab(\'goles\')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid #111;color:#111;font-family:inherit">⚽ Goles</button>',
       IS_PREMIUM ? '<button id="mtab-corners" onclick="switchModalTab(\'corners\')" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#888;font-family:inherit">📐 Corners</button>' : '<button onclick="showPremiumModal()" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;color:#ccc;font-family:inherit">📐 🔐</button>',
@@ -1834,18 +1765,14 @@ function openMatchModal(key){
       isUpset ? (IS_PREMIUM ? '<button id="mtab-upset" onclick="switchModalTab(\'upset\')" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;background:#fef9e7;cursor:pointer;border-bottom:2px solid transparent;color:#92400e;font-family:inherit">🚨 Sorpresa</button>' : '<button onclick="showPremiumModal()" style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;background:#fef9e7;cursor:pointer;color:#ccc;font-family:inherit">🚨 🔐</button>') : '',
     '</div>',
 
-    // ── Tab Goles ──
     '<div id="mtab-content-goles">',
       IS_PREMIUM ? golesHtml : golesHtml + premiumBanner('xG detallado, Half Time, Top 5 resultados y más'),
     '</div>',
 
-    // ── Tab Corners ──
     IS_PREMIUM ? '<div id="mtab-content-corners" style="display:none">'+cornersHtml+'</div>' : '',
 
-    // ── Tab Tarjetas ──
     IS_PREMIUM ? '<div id="mtab-content-tarjetas" style="display:none">'+tarjetasHtml+'</div>' : '',
 
-    // ── Tab Sorpresa (solo si aplica) ──
     isUpset && IS_PREMIUM ? '<div id="mtab-content-upset" style="display:none">'+upsetHtml+'</div>' : '',
 
     '</div>'
@@ -2010,7 +1937,6 @@ function renderGroups(){
       }).join(' ');
     }
 
-    // ── Card resumida ──
     html+=`<div class="gcard">
       <div class="ghdr">
         <span style="font-weight:600">Grupo ${g}</span>
@@ -2127,14 +2053,12 @@ function openGroupModal(g){
     return p?p.pts:'—';
   }
 
-  // Partidos pendientes del grupo
   const pending=[];
   for(let i=0;i<ms.length;i++) for(let j=i+1;j<ms.length;j++){
     const ta=ms[i],tb=ms[j];
     if(!getResult(fx,ta,tb)) pending.push({ta,tb});
   }
 
-  // Partidos jugados
   const results=[];
   for(let i=0;i<ms.length;i++) for(let j=i+1;j<ms.length;j++){
     const ta=ms[i],tb=ms[j];
@@ -2151,7 +2075,6 @@ function openGroupModal(g){
       <button class="modal-close" onclick="closeGroupModal()">&#x2715;</button>
     </div>
 
-    <!-- Tabla completa -->
     <div class="modal-section">
       <div class="modal-sec-title">Tabla de posiciones</div>
       <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -2193,7 +2116,6 @@ function openGroupModal(g){
       <p style="font-size:10px;color:#aaa;margin-top:6px"><strong style="color:#1565c0">Proy.</strong> = puntos proyectados al final del grupo según el modelo</p>
     </div>
 
-    <!-- Resultados jugados -->
     ${results.length?`<div class="modal-section">
       <div class="modal-sec-title">Resultados</div>
       <div style="display:flex;flex-direction:column;gap:5px">
@@ -2206,7 +2128,6 @@ function openGroupModal(g){
       </div>
     </div>`:''}
 
-    <!-- Partidos pendientes -->
     ${pending.length?`<div class="modal-section">
       <div class="modal-sec-title">Partidos pendientes</div>
       <div style="display:flex;flex-direction:column;gap:5px">
@@ -2254,7 +2175,6 @@ function openTeamProfile(name){
   const mcp=MCP[name]||{};
   const str=+(STR[name]||0).toFixed(3);
 
-  // Encontrar grupo del equipo
   let teamGroup=null, groupPos=null, groupRows=null;
   for(const[g,ms] of Object.entries(GRP)){
     if(ms.includes(name)){
@@ -2266,19 +2186,15 @@ function openTeamProfile(name){
   }
   const gRow=groupRows?groupRows[groupPos]:null;
 
-  // Historial en el torneo — grupos + eliminatorias
   const stats={played:0,wins:0,draws:0,losses:0,gf:0,ga:0,form:[]};
   const groupTeams = teamGroup ? GRP[teamGroup] : [];
 
-  // Partidos de grupos — usar solo partidos donde el equipo aparece en su grupo
-  // y verificar ambas direcciones de la clave para evitar duplicados
   const countedKeys=new Set();
   for(const[k,r] of Object.entries(fx)){
     const[ta,tb]=k.split('|');
     if(ta!==name&&tb!==name) continue;
     const opp=ta===name?tb:ta;
     if(teamGroup&&!groupTeams.includes(opp)) continue;
-    // Evitar contar el mismo partido dos veces (ta|tb y tb|ta)
     const canonical=[name,opp].sort().join('|');
     if(countedKeys.has(canonical)) continue;
     countedKeys.add(canonical);
@@ -2290,10 +2206,9 @@ function openTeamProfile(name){
     else{stats.losses++;stats.form.push('L');}
   }
 
-  // Partidos de eliminatorias (KO_RR)
   const kofx=getKOFx();
   if(BD){
-    const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.fin?[BD.fin]:[])];
+    const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.third?[BD.third]:[]),...(BD.fin?[BD.fin]:[])];
     allKO.forEach(m=>{
       if(m.ta!==name&&m.tb!==name) return;
       const mid=m.id;
@@ -2308,7 +2223,6 @@ function openTeamProfile(name){
     });
   }
 
-  // xG promedio del modelo
   const u=bayesUpd();
   let xgFor=0, xgAg=0, xgCount=0;
   if(teamGroup){
@@ -2323,7 +2237,6 @@ function openTeamProfile(name){
   const avgXgAg=xgCount?+(xgAg/xgCount).toFixed(2):0;
   const cIdx=CORNER_IDX[name]||5.5;
 
-  // Próximo partido pendiente
   let nextMatch=null;
   if(teamGroup){
     const ms=GRP[teamGroup];
@@ -2338,9 +2251,8 @@ function openTeamProfile(name){
       break;
     }
   }
-  // Si no hay en grupos buscar en bracket
   if(!nextMatch&&BD){
-    const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.fin?[BD.fin]:[])];
+    const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.third?[BD.third]:[]),...(BD.fin?[BD.fin]:[])];
     for(const m of allKO){
       if(m.ta!==name&&m.tb!==name) continue;
       const opp=m.ta===name?m.tb:m.ta;
@@ -2350,14 +2262,12 @@ function openTeamProfile(name){
     }
   }
 
-  // Forma dots
   function formDot(r){
     const bg=r==='W'?'#d4edda':r==='D'?'#e8e8e8':'#fde8e8';
     const col=r==='W'?'#1a5e34':r==='D'?'#555':'#c00';
     return`<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${bg};color:${col};font-size:10px;font-weight:700">${r}</span>`;
   }
 
-  // Barra de probabilidad
   function probBar(pct, color='#111'){
     return`<div style="display:flex;align-items:center;gap:8px">
       <div style="flex:1;height:6px;background:#e8e8e8;border-radius:3px;overflow:hidden">
@@ -2380,7 +2290,6 @@ function openTeamProfile(name){
       <button class="modal-close" onclick="closeTeamProfile()">&#x2715;</button>
     </div>
 
-    <!-- Tabs -->
     <div style="display:flex;border-bottom:1px solid #e0e0e0;background:#fafafa">
       <button id="tptab-perfil" onclick="switchTeamTab('perfil','${safeId}')"
         style="flex:1;padding:10px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:2px solid #111;color:#111;font-family:inherit">
@@ -2392,10 +2301,8 @@ function openTeamProfile(name){
       </button>
     </div>
 
-    <!-- Tab Perfil -->
     <div id="tptab-content-perfil-${safeId}">
 
-    <!-- Posición en el grupo -->
     ${teamGroup?`<div class="modal-section">
       <div class="modal-sec-title">Posición en el torneo</div>
       <div style="display:flex;align-items:center;gap:12px;background:#f5f5f5;border-radius:10px;padding:12px 14px">
@@ -2410,7 +2317,6 @@ function openTeamProfile(name){
       </div>
     </div>`:''}
 
-    <!-- Rendimiento en el torneo -->
     ${stats.played>0?`<div class="modal-section">
       <div class="modal-sec-title">Rendimiento en el torneo</div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">
@@ -2441,7 +2347,6 @@ function openTeamProfile(name){
       <div style="font-size:12px;color:#aaa;text-align:center;padding:10px 0">Sin partidos jugados aún</div>
     </div>`}
 
-    <!-- Probabilidades del modelo -->
     <div class="modal-section">
       <div class="modal-sec-title">Probabilidades del modelo</div>
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -2456,7 +2361,6 @@ function openTeamProfile(name){
       </div>
     </div>
 
-    <!-- Análisis del modelo -->
     <div class="modal-section">
       <div class="modal-sec-title">Análisis del modelo</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
@@ -2475,7 +2379,6 @@ function openTeamProfile(name){
       </div>
     </div>
 
-    <!-- Próximo partido -->
     ${nextMatch?`<div class="modal-section">
       <div class="modal-sec-title">Próximo partido</div>
       <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;background:#f9f9f9;border-radius:10px;padding:12px 14px">
@@ -2496,7 +2399,6 @@ function openTeamProfile(name){
 
     </div><!-- fin tab perfil -->
 
-    <!-- Tab Comparar -->
     <div id="tptab-content-comparar-${safeId}" style="display:none">
       <div class="modal-section">
         <div class="modal-sec-title">⚡ Comparar ${name} con...</div>
@@ -2550,17 +2452,14 @@ function switchTeamTab(tab, safeId){
 // ── COMPARADOR DE EQUIPOS ─────────────────────────────────────────────────────
 function openComparator(nameA, nameB){
   if(!IS_PREMIUM){ showPremiumModal(); return; }
-  // Limpiar y validar
   nameB=(nameB||'').trim();
   if(!nameB){ alert('Escribe el nombre de un equipo para comparar'); return; }
-  // Buscar coincidencia exacta o parcial
   const match=Object.keys(TD).find(t=>t.toLowerCase()===nameB.toLowerCase())
     || Object.keys(TD).find(t=>t.toLowerCase().includes(nameB.toLowerCase()));
   if(!match){ alert('No encontré ese equipo. Verifica el nombre.'); return; }
   nameB=match;
   if(nameA===nameB){ alert('Selecciona un equipo diferente para comparar'); return; }
 
-  // Cerrar modal anterior
   const existing=document.getElementById('comparator-modal');
   if(existing) existing.remove();
   const teamModal=document.getElementById('team-modal');
@@ -2569,7 +2468,6 @@ function openComparator(nameA, nameB){
   const u=bayesUpd();
   const fx=getFx();
 
-  // Datos de cada equipo
   function getTeamData(name){
     const td=TD[name]||{};
     const mcp=MCP[name]||{};
@@ -2577,7 +2475,6 @@ function openComparator(nameA, nameB){
     const cIdx=CORNER_IDX[name]||5.5;
     const cardIdx=CARD_IDX[name]||6.0;
 
-    // Stats reales en torneo
     const stats={played:0,wins:0,draws:0,losses:0,gf:0,ga:0,form:[]};
     let teamGroup=null;
     for(const[g,ms] of Object.entries(GRP)){
@@ -2600,10 +2497,9 @@ function openComparator(nameA, nameB){
       else if(myG===oppG){stats.draws++;stats.form.push('D');}
       else{stats.losses++;stats.form.push('L');}
     }
-    // Partidos de eliminatorias
     const kofx2=getKOFx();
     if(BD){
-      const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.fin?[BD.fin]:[])];
+      const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.third?[BD.third]:[]),...(BD.fin?[BD.fin]:[])];
       allKO.forEach(m=>{
         if(m.ta!==name&&m.tb!==name) return;
         if(!kofx2[m.id]) return;
@@ -2640,13 +2536,11 @@ function openComparator(nameA, nameB){
   const dA=getTeamData(nameA);
   const dB=getTeamData(nameB);
 
-  // Partido hipotético entre los dos
   const hyp=matchAnal(nameA,nameB,u);
   const maxP=Math.max(hyp.pw_a,hyp.pd,hyp.pw_b);
   const [hcA,hcB]=cornerCalc(nameA,nameB);
   const [htA,htB]=cardCalc(nameA,nameB);
 
-  // Fila comparativa — barra doble enfrentada
   function compRow(label, valA, valB, higherIsBetter=true){
     const numA=parseFloat(valA)||0, numB=parseFloat(valB)||0;
     const max=Math.max(numA,numB,0.01);
@@ -2690,7 +2584,6 @@ function openComparator(nameA, nameB){
       <button class="modal-close" onclick="closeComparator()">&#x2715;</button>
     </div>
 
-    <!-- Header equipos -->
     <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:12px 16px;background:#f9f9f9;border-bottom:1px solid #f0f0f0">
       <div style="text-align:center">
         <div style="font-size:14px;font-weight:600">${nameA}${dA.isHost?' 🏠':''}</div>
@@ -2705,7 +2598,6 @@ function openComparator(nameA, nameB){
       </div>
     </div>
 
-    <!-- Tabla comparativa -->
     <div class="modal-section">
       <div class="modal-sec-title">Comparación de métricas</div>
       <div style="padding:0 4px">
@@ -2721,7 +2613,6 @@ function openComparator(nameA, nameB){
       </div>
     </div>
 
-    <!-- Partido hipotético -->
     <div class="modal-section">
       <div class="modal-sec-title">⚡ Si se enfrentaran hoy</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">
@@ -2761,7 +2652,6 @@ function openComparator(nameA, nameB){
       </div>
     </div>
 
-    <!-- Volver -->
     <div style="padding:10px 16px;border-top:1px solid #f0f0f0;display:flex;gap:8px">
       <button onclick="closeComparator();openTeamProfile('${nameA}')"
         style="flex:1;padding:8px;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">
@@ -2833,27 +2723,24 @@ function openComparatorDirect(){
 }
 
 // ── RENDER RANKING ────────────────────────────────────────────────────────────
-// Detecta equipos eliminados basándose en resultados reales del bracket
 function getEliminatedTeams(){
   const eliminated=new Set();
   if(!BD) return eliminated;
   const kofx=getKOFx();
-  const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.fin?[BD.fin]:[])];
+  const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.third?[BD.third]:[]),...(BD.fin?[BD.fin]:[])];
   allKO.forEach(m=>{
     if(!m||!m.ta||!m.tb) return;
     const r=kofx[m.id];
     if(!r) return;
     const winner=getKOWinner(m.id,m.ta,m.tb,r[0],r[1]);
-    if(!winner) return; // empate sin penales definidos aún
+    if(!winner) return;
     const loser=winner===m.ta?m.tb:m.ta;
     eliminated.add(loser);
   });
-  // También eliminados de fase de grupos (4° y a veces 3° lugar)
   const fx=getFx();
   for(const g of Object.keys(GRP)){
     const rows=realGroupStandings(g,fx);
     if(rows.every(r=>r.pj===3)){
-      // Grupo completo: eliminados son 4° siempre, y 3° si no está en mejores 8
       eliminated.add(rows[3].name);
     }
   }
@@ -2903,17 +2790,16 @@ function renderRanking(){
 // ── TRACKER DE ACIERTOS ───────────────────────────────────────────────────────
 function calcTracker(){
   const fx=getFx();
-  // Fases y sus partidos
   const phases=[
     {key:'grupos', label:'Fase de grupos', matches:[]},
     {key:'r32',    label:'Ronda de 32',    matches:[]},
     {key:'r16',    label:'Octavos de final',matches:[]},
     {key:'qf',     label:'Cuartos de final',matches:[]},
     {key:'sf',     label:'Semifinales',    matches:[]},
+    {key:'third',  label:'3er y 4to puesto', matches:[]},
     {key:'final',  label:'Gran Final',     matches:[]},
   ];
 
-  // Recopilar partidos de grupos con resultado real
   for(const[g,ms] of Object.entries(GRP)){
     for(let i=0;i<ms.length;i++) for(let j=i+1;j<ms.length;j++){
       const ta=ms[i],tb=ms[j],k=ta+'|'+tb;
@@ -2921,11 +2807,10 @@ function calcTracker(){
     }
   }
 
-  // Recopilar partidos KO con resultado real (cuando existan)
   const kofx=getKOFx();
   if(BD){
-    const koMap={r32:BD.r32,r16:BD.r16,qf:BD.qf,sf:BD.sf,final:BD.fin?[BD.fin]:[]};
-    const koPhases=['r32','r16','qf','sf','final'];
+    const koMap={r32:BD.r32,r16:BD.r16,qf:BD.qf,sf:BD.sf,third:BD.third?[BD.third]:[],final:BD.fin?[BD.fin]:[]};
+    const koPhases=['r32','r16','qf','sf','third','final'];
     koPhases.forEach((pk,pi)=>{
       (koMap[pk]||[]).forEach(m=>{
         if(kofx[m.id]) phases[pi+1].matches.push({ta:m.ta,tb:m.tb,real:kofx[m.id],phase:pk,predicted:m});
@@ -2933,9 +2818,6 @@ function calcTracker(){
     });
   }
 
-  // Para cada partido con resultado calcular si el modelo acertó
-  // Acierto = el equipo que el modelo predijo como favorito (mayor pw) ganó
-  // También calculamos acierto de Over/Under 2.5
   function evalMatch(ta,tb,real){
     const u=bayesUpd();
     const a=matchAnal(ta,tb,u);
@@ -2943,16 +2825,13 @@ function calcTracker(){
     const realWinner = realGA>realGB?'A':(realGB>realGA?'B':'D');
     const predWinner = a.pw_a>a.pw_b?'A':(a.pw_b>a.pw_a?'B':'D');
 
-    // Acierto resultado: el favorito ganó
     const hitResult = realWinner===predWinner;
 
-    // Acierto Over/Under 2.5
     const totalGoals=realGA+realGB;
     const predOver=(a.p_over25>=0.5);
     const realOver=(totalGoals>2.5);
     const hitOU = predOver===realOver;
 
-    // Acierto BTTS
     const predBTTS=(a.p_btts>=0.5);
     const realBTTS=(realGA>=1&&realGB>=1);
     const hitBTTS = predBTTS===realBTTS;
@@ -2960,7 +2839,6 @@ function calcTracker(){
     return{hitResult,hitOU,hitBTTS,predWinner,realWinner,a,realGA,realGB};
   }
 
-  // Calcular stats por fase
   const results=phases.map(ph=>{
     if(!ph.matches.length) return{...ph,total:0,hitR:0,hitOU:0,hitBTTS:0,details:[]};
     const details=ph.matches.map(m=>{
@@ -3000,7 +2878,6 @@ function renderTracker(){
     return;
   }
 
-  // Color según precisión
   function pctColor(p){
     if(p>=65) return{bg:'#d4edda',col:'#1a5e34',label:'Muy bueno'};
     if(p>=50) return{bg:'#fff3cd',col:'#856404',label:'Bueno'};
@@ -3008,7 +2885,6 @@ function renderTracker(){
   }
   const cR=pctColor(pctR), cOU=pctColor(pctOU), cBTTS=pctColor(pctBTTS);
 
-  // Barra de precisión
   function pctBar(pct,color){
     return`<div style="height:6px;background:#e8e8e8;border-radius:3px;overflow:hidden;margin-top:5px">
       <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width .4s"></div>
@@ -3016,7 +2892,6 @@ function renderTracker(){
   }
 
   let html=`
-  <!-- Disclaimer educativo -->
   <div style="background:#e8f4fd;border:1px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:1.2rem;display:flex;gap:10px;align-items:flex-start">
     <span style="font-size:20px;flex-shrink:0">📊</span>
     <div style="font-size:12px;color:#1e40af;line-height:1.5">
@@ -3027,7 +2902,6 @@ function renderTracker(){
     </div>
   </div>
 
-  <!-- Métricas globales -->
   <p class="slabel">Precisión global — Mundial 2026 · ${totalMatches} partidos evaluados</p>
   <div class="scards" style="margin-bottom:1.2rem">
     <div class="sc" style="background:${cR.bg}">
@@ -3047,7 +2921,6 @@ function renderTracker(){
     </div>
   </div>
 
-  <!-- Por fase -->
   <p class="slabel">Desglose por fase</p>`;
 
   phases.forEach(ph=>{
@@ -3062,7 +2935,6 @@ function renderTracker(){
         <span style="font-size:11px;color:#888">${ph.total} partido${ph.total>1?'s':''} evaluado${ph.total>1?'s':''}</span>
       </div>
       <div style="padding:10px 14px">
-        <!-- Mini métricas -->
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
           <div style="text-align:center;background:${pctColor(pR).bg};border-radius:8px;padding:8px">
             <div style="font-size:18px;font-weight:700;color:${pctColor(pR).col}">${pR}%</div>
@@ -3077,7 +2949,6 @@ function renderTracker(){
             <div style="font-size:9px;color:${pctColor(pBTTS).col};margin-top:1px">BTTS</div>
           </div>
         </div>
-        <!-- Detalle partidos -->
         <div style="display:flex;flex-direction:column;gap:4px">
           ${ph.details.map(d=>{
             const icon=d.hitResult?'✅':'❌';
@@ -3113,6 +2984,7 @@ const KO_ROUNDS=[
   {key:'r16',label:'Octavos de final',date:'2026-07-04',matches:['M89','M90','M91','M92','M93','M94','M95','M96']},
   {key:'qf',label:'Cuartos de final',date:'2026-07-09',matches:['M97','M98','M99','M100']},
   {key:'sf',label:'Semifinales',date:'2026-07-14',matches:['M101','M102']},
+  {key:'third',label:'3er y 4to puesto',date:'2026-07-18',matches:['M103']},
   {key:'final',label:'Gran Final',date:'2026-07-19',matches:['M104']}
 ];
 
@@ -3122,16 +2994,13 @@ function setKO(matchId,idx,val){
   if(!KO_RR[matchId]) KO_RR[matchId]=[undefined,undefined];
   KO_RR[matchId][idx]=v;
   saveToStorage();
-  // Guardar en Supabase si ambos goles están completos
   if(KO_RR[matchId][0]!==undefined&&KO_RR[matchId][1]!==undefined){
     saveToSupabase(matchId, KO_RR[matchId][0], KO_RR[matchId][1], 'ko');
   }
-  // Re-renderizar para mostrar/ocultar el selector de penales si es empate
   const koSection=document.getElementById('ko-section');
   if(koSection) koSection.innerHTML=renderKnockoutInputs();
 }
 
-// Ganador en penales — se guarda separado para no afectar el marcador real
 let KO_PEN={};
 function setKOPenalty(matchId,winnerTeam){
   KO_PEN[matchId]=winnerTeam;
@@ -3149,17 +3018,16 @@ function loadPenalties(){
 function getKOWinner(matchId,ta,tb,ga,gb){
   if(ga>gb) return ta;
   if(gb>ga) return tb;
-  // Empate — usar definición de penales si existe
   if(KO_PEN[matchId]==='A') return ta;
   if(KO_PEN[matchId]==='B') return tb;
-  return null; // empate sin definir penales aún
+  return null;
 }
 function getKOFx(){ const fx={}; for(const[k,r] of Object.entries(KO_RR)) if(r&&r[0]!==undefined&&r[1]!==undefined) fx[k]=r; return fx; }
 
 function renderKnockoutInputs(){
   if(!BD) return '';
   let html='';
-  const roundData={r32:BD.r32,r16:BD.r16,qf:BD.qf,sf:BD.sf,final:BD.fin?[BD.fin]:[]};
+  const roundData={r32:BD.r32,r16:BD.r16,qf:BD.qf,sf:BD.sf,third:BD.third?[BD.third]:[],final:BD.fin?[BD.fin]:[]};
   KO_ROUNDS.forEach(function(round){
     const matches=roundData[round.key]||[];
     if(!matches.length) return;
@@ -3208,7 +3076,6 @@ function renderKnockoutInputs(){
 function buildMatchList(){
   let html='';
 
-  // ── DISCLAIMER FRIENDLY ──
   html+=`<div style="background:#fffbea;border:1.5px solid #f5c518;border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:#856404;display:flex;gap:10px;align-items:flex-start">
     <span style="font-size:18px;flex-shrink:0">💡</span>
     <div>
@@ -3253,7 +3120,6 @@ function setR(k,idx,val){
   if(!RR[k])RR[k]=[undefined,undefined];
   RR[k][idx]=v;
   saveToStorage();
-  // Guardar en Supabase si ambos goles están completos
   if(RR[k][0]!==undefined&&RR[k][1]!==undefined){
     saveToSupabase(k, RR[k][0], RR[k][1], 'grupo');
   }
@@ -3266,7 +3132,6 @@ function getFx(){
       const[ta,tb]=k.split('|');
       const canonical=ta+'|'+tb;
       const inverse=tb+'|'+ta;
-      // Solo agregar si no hemos visto este partido aún
       if(!seen.has(canonical)&&!seen.has(inverse)){
         fx[canonical]=r;
         seen.add(canonical);
@@ -3279,7 +3144,6 @@ function setP(pct,msg){ document.getElementById('pfill').style.width=pct+'%'; if
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 function filt(r,btn){ CRF=r; SEARCH_Q=''; document.querySelectorAll('.rfbtn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderPartidos(); }
 function showTab(id,btn){
-  // Bloquear pestaña de Resultados si no es admin
   if(id==='res'&&!IS_ADMIN){
     alert('Esta sección es solo para administradores.');
     return;
@@ -3291,7 +3155,6 @@ function showTab(id,btn){
 }
 
 // ── RUN MODEL ─────────────────────────────────────────────────────────────────
-// Versión silenciosa del modelo — corre en background sin UI de loading
 async function runModelSilent(){
   const myEpoch = COMP_EPOCH;
   if(CURRENT_COMPETITION!=='mundial2026') return;
@@ -3301,7 +3164,7 @@ async function runModelSilent(){
     BD=calcBD(u);
     MCP=calcProbs(u,fx);
     PD=buildPD(u,fx);
-    if(COMP_EPOCH!==myEpoch) return; // el usuario cambió de competición mientras esto calculaba
+    if(COMP_EPOCH!==myEpoch) return;
     renderGroups(); renderBracket(); renderRanking(); renderPartidos(); renderTracker();
     const koSection=document.getElementById('ko-section');
     if(koSection) koSection.innerHTML=renderKnockoutInputs();
@@ -3332,7 +3195,6 @@ async function runModel(){
   st.style.display='none';
   btn.disabled=false; btn.textContent='▶ Actualizar modelo';
   document.getElementById('ubadge').style.display='inline-flex';
-  // Hora de última actualización
   const now=new Date();
   const hora=now.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
   document.getElementById('hdr-sub').innerHTML=`Última actualización hoy a las <strong>${hora}</strong> · ${Object.keys(fx).length} resultado(s) cargados`;
@@ -3345,7 +3207,6 @@ function saveToStorage(){
   try{
     const data={ RR, KO_RR, savedAt: new Date().toISOString() };
     localStorage.setItem(LS_KEY, JSON.stringify(data));
-    // Mostrar indicador visual brevemente
     let el=document.getElementById('save-indicator');
     if(!el){
       el=document.createElement('span');
@@ -3370,7 +3231,6 @@ function loadFromStorage(){
   } catch(e){ return false; }
 }
 
-// Exportar resultados como JSON descargable
 function exportData(){
   const data={ RR, KO_RR, exportedAt: new Date().toISOString(), version:'wc2026' };
   const blob=new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
@@ -3382,7 +3242,6 @@ function exportData(){
   URL.revokeObjectURL(url);
 }
 
-// Importar resultados desde JSON
 function importData(){
   const input=document.createElement('input');
   input.type='file';
@@ -3464,7 +3323,6 @@ async function syncResults(){
     if(synced>0){
       buildMatchList();
       saveToStorage();
-      // Guardar todos los resultados en Supabase
       for(const[k,r] of Object.entries(RR)){
         if(r&&r[0]!==undefined&&r[1]!==undefined){
           saveToSupabase(k, r[0], r[1], 'grupo');
@@ -3486,11 +3344,9 @@ async function syncResults(){
   }
 }
 
-// Helper para contar partidos pasados sin resultado
 function countNeedManual(){
   const fx=getFx();
   const kofx=getKOFx();
-  // Partidos de grupos pendientes
   const groupMatches=Object.values(GRP).flatMap(ms=>{
     const pairs=[];
     for(let i=0;i<ms.length;i++) for(let j=i+1;j<ms.length;j++) pairs.push([ms[i],ms[j]]);
@@ -3498,13 +3354,11 @@ function countNeedManual(){
   });
   const needGroup=groupMatches.filter(([ta,tb])=>isMatchPast(ta,tb)&&!getResult(fx,ta,tb)).length;
 
-  // Partidos KO pendientes — solo si tienen equipos reales asignados
   let needKO=0;
   if(BD){
-    const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.fin?[BD.fin]:[])];
+    const allKO=[...BD.r32,...BD.r16,...BD.qf,...BD.sf,...(BD.third?[BD.third]:[]),...(BD.fin?[BD.fin]:[])];
     allKO.forEach(m=>{
       if(!m||!m.ta||!m.tb) return;
-      // Solo contar si los equipos son reales (no placeholders)
       if(m.ta.startsWith('G')||m.tb.startsWith('G')) return;
       if(isMatchPastById(m.id)&&!kofx[m.id]) needKO++;
     });
@@ -3523,8 +3377,7 @@ function showApiStatus(msg,type,persistent=false){
 
 // ── NAVEGACIÓN ENTRE COMPETICIONES ───────────────────────────────────────────
 let CURRENT_COMPETITION = 'mundial2026';
-let COMP_EPOCH = 0; // se incrementa cada vez que se cambia de competición — cualquier
-                     // proceso en curso que termine después de un cambio se auto-cancela
+let COMP_EPOCH = 0;
 
 const COMPETITION_NAMES = {
   'mundial2026': '🌍 Mundial FIFA 2026',
@@ -3541,21 +3394,18 @@ const COMPETITION_NAMES = {
 const COMING_SOON = ['premier','laliga','bundesliga','seriea','ligue1'];
 
 function enterCompetition(id){
-  // Ligas aún no disponibles
   if(COMING_SOON.includes(id)){
     const name=COMPETITION_NAMES[id]||id;
     showComingSoonModal(name);
     return;
   }
-  COMP_EPOCH++; // invalida cualquier proceso en curso de la competición anterior
+  COMP_EPOCH++;
   CURRENT_COMPETITION=id;
   document.getElementById('home-screen').style.display='none';
   document.getElementById('main-app').style.display='block';
   const titleEl=document.getElementById('app-title');
   if(titleEl) titleEl.innerHTML=(COMPETITION_NAMES[id]||id)+' <span id="ubadge" style="display:none" class="ubadge">✓ Actualizado</span>';
 
-  // Cada competición tiene contenedores 100% separados — nunca pueden pisarse,
-  // aunque algún proceso en segundo plano tarde en resolver.
   const containerSets = {
     'mundial2026': ['pcont','gcont','mcont'],
     'ligapro':     ['pcont-liga','gcont-liga','mcont-liga'],
@@ -3573,7 +3423,6 @@ function enterCompetition(id){
     });
   });
 
-  // Inicializar la app para esta competición
   if(id==='ligapro'){ ligaInitApp(); return; }
   if(id==='ligamx'){ ligamxInitApp(); return; }
   if(id==='brasileirao'){ brasilInitApp(); return; }
@@ -3616,25 +3465,20 @@ function showComingSoonModal(name){
 }
 
 function initApp(){
-  // Restaurar tabs por si el usuario viene de LigaPro (donde se ocultan/renombran)
   const tabBtns=document.querySelectorAll('.tab');
   tabBtns.forEach(t=>{ t.style.display=''; });
   const originalLabels=['✏️ Resultados','📊 Partidos','🏟️ Grupos','🏆 Bracket','📈 Probabilidades','🎯 Aciertos'];
   tabBtns.forEach((t,i)=>{ if(originalLabels[i]) t.innerHTML=originalLabels[i]; });
 
-  // Restaurar el botón "Actualizar modelo" por si LigaPro lo reprogramó
   const btnrunReset=document.getElementById('btnrun');
   if(btnrunReset){ btnrunReset.onclick=runModel; btnrunReset.textContent='▶ Actualizar modelo'; }
 
-  // Restaurar el filtro de fases (LigaPro lo oculta)
   const rfiltReset = document.getElementById('mundial-rfilt');
   if(rfiltReset) rfiltReset.style.display = '';
 
-  // Restaurar el botón de sincronización (LigaPro lo oculta)
   const btnSyncReset = document.getElementById('btn-sync');
   if(btnSyncReset) btnSyncReset.style.display = '';
 
-  // Ocultar elementos admin si no es admin
   if(!IS_ADMIN){
     document.querySelectorAll('.tab').forEach(function(t){
       if(t.textContent.includes('Resultados')) t.style.display='none';
@@ -3645,7 +3489,6 @@ function initApp(){
     if(runSt) runSt.style.display='none';
   }
 
-  // Mostrar botón Premium para usuarios free
   if(!IS_PREMIUM){
     const hdr=document.querySelector('.hdr');
     if(hdr){
@@ -3684,19 +3527,16 @@ function initApp(){
   renderPartidos();
   renderTracker();
 
-  // Orden correcto: 1) Supabase → 2) Auto-sync openfootball → 3) Correr modelo
   document.getElementById('hdr-sub').innerHTML=IS_ADMIN
     ?'☁️ Cargando resultados...'
     :'☁️ Cargando análisis...';
 
   (async function initData(){
     const myEpoch = COMP_EPOCH;
-    // 1. Cargar desde Supabase
     const loaded = await loadFromSupabase();
-    if(COMP_EPOCH!==myEpoch) return; // el usuario ya cambió de competición
+    if(COMP_EPOCH!==myEpoch) return;
     if(loaded) buildMatchList();
 
-    // 2. Auto-sync desde openfootball
     try{
       const res=await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json');
       if(COMP_EPOCH!==myEpoch) return;
@@ -3733,7 +3573,6 @@ function initApp(){
       }
     } catch(e){ /* silencioso */ }
 
-    // 3. Correr modelo con todos los datos cargados
     if(COMP_EPOCH!==myEpoch) return;
     document.getElementById('hdr-sub').innerHTML=IS_ADMIN
       ?'⚙️ Calculando probabilidades...'
@@ -3745,29 +3584,9 @@ function initApp(){
       :'☁️ Análisis listo · Explora los pronósticos del Mundial FIFA 2026';
   })();
 }
-// La app se inicializa cuando el usuario selecciona una competición
-// Ver función enterCompetition() arriba
-
-
-
 // ═══════════════════════════════════════════════════════════════════════════
 // ── LIGAPRO ECUADOR — MÓDULO (no modifica nada del Mundial) ─────────────────
 // ═══════════════════════════════════════════════════════════════════════════
-// Formato real de LigaPro 2026 (para referencia futura):
-//   Fase Regular: 16 equipos, todos contra todos ida y vuelta, 30 fechas.
-//   Fase Final (arranca cuando termine la fecha 30, los puntos NO se reinician):
-//     - Hexagonal por el título: puestos 1-6, 10 fechas → campeón + cupos Libertadores
-//     - Cuadrangular internacional: puestos 7-10, 6 fechas → cupo Sudamericana
-//     - Hexagonal por el descenso: puestos 11-16, 10 fechas → 2 descienden
-//   Por ahora solo está activa la Fase Regular.
-//
-// Calendario: LigaPro solo publica 2 fechas por adelantado. LIGA_FIXTURES se
-// actualiza a mano cada semana con lo que la liga vaya confirmando.
-
-// Temporada activa — el historial de temporadas anteriores queda guardado en
-// Supabase (nunca se borra), pero la app solo carga/usa la temporada actual.
-// Cuando empiece la temporada 2027, solo hay que cambiar este valor y
-// actualizar LIGA_TD / LIGA_FIXTURES con los datos de la nueva temporada.
 const LIGA_SEASON = '2026';
 
 const LIGA_TEAMS = [
@@ -3795,8 +3614,6 @@ const LIGA_TD = {
   "Manta FC":                {pj:16, pts:12, gf:7,  ga:19, titles:0}
 };
 
-// Corners reales (promedio por partido, fuente: APWin) — reemplaza el índice
-// sintético anterior por datos reales a favor/en contra.
 const LIGA_CORNER_FAVOR = {
   "Independiente del Valle":6.36, "LDU Quito":5.79, "Aucas":5.71, "Macará":5.21,
   "Técnico Universitario":5.14, "Emelec":5.07, "U. Católica":5.00, "Manta FC":4.79,
@@ -3837,10 +3654,6 @@ const LIGA_FIXTURES = {
     {ta:"Deportivo Cuenca",tb:"Aucas",                    date:"2026-07-12"},
     {ta:"Emelec",          tb:"Barcelona SC",             date:"2026-07-12"}
   ],
-  // Nota: la fuente oficial listaba un equipo "Vinotinto" — lo mapeamos a
-  // Mushuc Runa (encaja matemáticamente: es el único de los 16 que faltaba
-  // en cada una de estas 3 fechas, y su camiseta es justamente vino/granate).
-  // Pendiente de que Camilo confirme.
   "Fecha 19": [
     {ta:"Macará",                  tb:"Mushuc Runa",           date:"2026-07-14"},
     {ta:"Manta FC",                tb:"Delfín",                date:"2026-07-14"},
@@ -3952,9 +3765,6 @@ function ligaMatchAnal(ta, tb, u){
   };
 }
 
-// Corners esperados = promedio entre "cuánto genera el equipo A" y
-// "cuánto le suele conceder a rivales el equipo B" — basado en datos reales,
-// no en un índice de estilo estimado.
 function ligaCornerCalc(ta, tb){
   const faA = LIGA_CORNER_FAVOR[ta] ?? 4.6, faB = LIGA_CORNER_FAVOR[tb] ?? 4.6;
   const coA = LIGA_CORNER_CONTRA[ta] ?? 4.6, coB = LIGA_CORNER_CONTRA[tb] ?? 4.6;
@@ -3976,7 +3786,6 @@ function ligaGetResult(ta, tb){
   return null;
 }
 
-// Últimos resultados jugados de un equipo (según fixtures cargados hasta ahora)
 function ligaTeamForm(name){
   const played = [];
   for(const[fecha, matches] of Object.entries(LIGA_FIXTURES)){
@@ -3995,7 +3804,6 @@ function ligaTeamForm(name){
   return played.slice(-3);
 }
 
-// ── TABLA DE POSICIONES ─────────────────────────────────────────────────────
 function ligaCalcStandings(){
   const rows = LIGA_TEAMS.map(n=>{
     const base = LIGA_TD[n];
@@ -4049,9 +3857,6 @@ function ligaRenderStandings(){
 }
 
 // ── PERFIL DE EQUIPO + COMPARADOR (genérico, compartido por las 3 ligas) ────
-// En vez de repetir esta lógica 3 veces (LigaPro/Liga MX/Brasileirão), se
-// escribe una sola vez y cada liga le pasa su propia config (datos, tabla,
-// funciones de cálculo) — así no hay riesgo de que se mezclen entre sí.
 function showLeagueTeamProfile(name, cfg){
   if(!IS_PREMIUM){ showPremiumModal(); return; }
   const existing = document.getElementById(cfg.modalId);
@@ -4062,9 +3867,6 @@ function showLeagueTeamProfile(name, cfg){
   const row = standings[pos];
   const u = cfg.strFn();
 
-  // Recorrer TODOS los partidos ya ingresados en la app (no solo los últimos 3)
-  // para armar el rendimiento completo — esto se recalcula cada vez que se abre
-  // el perfil, así que se actualiza solo conforme se van cargando resultados.
   const played = [];
   Object.values(cfg.FIXTURES).forEach(matches=>{
     matches.forEach(m=>{
@@ -4084,7 +3886,6 @@ function showLeagueTeamProfile(name, cfg){
   const losses = played.filter(p=>p.result==='L').length;
   const last5 = played.slice(-5);
 
-  // Próximo partido pendiente (el primero sin resultado, en orden de fecha)
   let nextMatch = null;
   const allFx = [];
   Object.values(cfg.FIXTURES).forEach(matches=>matches.forEach(m=>allFx.push(m)));
@@ -4319,7 +4120,6 @@ function ligaOpenTeamProfile(name){
   });
 }
 
-// ── CONSTRUIR LISTA DE PARTIDOS CON ANÁLISIS ────────────────────────────────
 function ligaBuildPD(){
   const u = ligaBayesUpd();
   const data = [];
@@ -4337,7 +4137,6 @@ function ligaBuildPD(){
   return data;
 }
 
-// ── TARJETA DE PARTIDO ──────────────────────────────────────────────────────
 function ligaRenderPCard(m){
   const maxP = Math.max(m.pw_a, m.pd, m.pw_b);
   const hiA = m.pw_a===maxP, hiD = m.pd===maxP&&!hiA, hiB = m.pw_b===maxP&&!hiA&&!hiD;
@@ -4348,7 +4147,6 @@ function ligaRenderPCard(m){
   const modalKey = (m.ta+'|'+m.tb).replace(/['"]/g,'');
   const dateLabel = new Date(m.date+'T00:00:00').toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
 
-  // ── Detector de sorpresas (misma lógica que el Mundial) ──
   const favWinP = Math.max(m.pw_a, m.pw_b);
   const undWinP = Math.min(m.pw_a, m.pw_b);
   const isUpset = !m.played && undWinP >= 0.30 && favWinP < 0.60;
@@ -4429,7 +4227,6 @@ function ligaRenderPartidos(){
     return ta.includes(sq)||tb.includes(sq);
   }
 
-  // Filtro de fecha — igual de importante que el buscador cuando hay muchas fechas cargadas
   const fechaKeys = Object.keys(LIGA_FIXTURES);
   let html = `<div class="rfilt" style="margin-bottom:.8rem">
     <button class="rfbtn${LIGA_FECHA_FILTER==='all'?' active':''}" onclick="ligaFiltFecha('all',this)">Todas</button>
@@ -4464,7 +4261,6 @@ function ligaRenderPartidos(){
   cont.innerHTML = html;
 }
 
-// ── MODAL DE ANÁLISIS COMPLETO — con tabs Goles / Corners / Tarjetas ───────
 function ligaOuTeamHtml(name, pScore, p15, p25){
   return '<div class="ou-team-block">'
     +'<div class="ou-team-name">'+name.split(' ')[0]+'</div>'
@@ -4533,7 +4329,6 @@ function ligaOpenMatchModal(key){
   const maxP = Math.max(m.pw_a, m.pd, m.pw_b);
   const maxFirst = Math.max(m.p_a_first, m.p_b_first);
 
-  // ── Sorpresa: mismo umbral que el Mundial ──
   const favTeam = m.pw_a>=m.pw_b ? m.ta : m.tb;
   const undTeam = m.pw_a>=m.pw_b ? m.tb : m.ta;
   const favP = Math.max(m.pw_a, m.pw_b), undP = Math.min(m.pw_a, m.pw_b);
@@ -4736,8 +4531,6 @@ function ligaSwitchModalTab(tab){
   });
 }
 
-// ── ENTRADA MANUAL DE RESULTADOS — organizada por fecha ────────────────────
-// ── RESPALDO LOCAL (localStorage) — igual que el Mundial ───────────────────
 const LIGA_LS_KEY = 'ligapro_results';
 
 function ligaSaveToStorage(){
@@ -4775,7 +4568,7 @@ function ligaSetResult(ta, tb, idx, val){
   if(!LIGA_RR[key]) LIGA_RR[key] = [undefined, undefined];
   if(isNaN(v)||val===''){ LIGA_RR[key][idx] = undefined; ligaSaveToStorage(); return; }
   LIGA_RR[key][idx] = v;
-  ligaSaveToStorage();  // ← respaldo inmediato, no depende de que Supabase funcione
+  ligaSaveToStorage();
   if(LIGA_RR[key][0]!==undefined && LIGA_RR[key][1]!==undefined){
     saveToSupabase('LIGA_'+LIGA_SEASON+'_'+key, LIGA_RR[key][0], LIGA_RR[key][1], 'ligapro').then(ok=>{
       if(!ok) alert('⚠️ No se pudo guardar '+ta+' vs '+tb+' en la nube (sí quedó guardado en este dispositivo). Revisa la consola (F12) para más detalle.');
@@ -4843,8 +4636,6 @@ function ligaRenderAdminInput(){
   cont.innerHTML = html;
 }
 
-// Guarda TODO lo que haya en LIGA_RR de una vez — localStorage + reenvío a Supabase.
-// Sirve de red de seguridad manual, además del guardado automático al escribir cada marcador.
 async function ligaSaveAll(){
   const btn = document.getElementById('liga-save-all-btn');
   const status = document.getElementById('liga-save-all-status');
@@ -4891,19 +4682,15 @@ async function ligaLoadFromSupabase(){
     let count = 0;
     rows.forEach(r=>{
       if(!r.clave || !r.clave.startsWith('LIGA_')) return;
-      const rest = r.clave.slice(5); // quitar el prefijo "LIGA_"
+      const rest = r.clave.slice(5);
       if(rest.startsWith(seasonPrefix)){
-        // Formato nuevo: LIGA_2026_Equipo|Equipo — de la temporada activa
         const clave = rest.slice(seasonPrefix.length);
         LIGA_RR[clave] = [r.goles_local, r.goles_visita];
         count++;
       } else if(!/^\d{4}_/.test(rest)){
-        // Formato antiguo sin temporada (datos de antes de este cambio) —
-        // se asume que pertenecen a la temporada activa, por compatibilidad.
         LIGA_RR[rest] = [r.goles_local, r.goles_visita];
         count++;
       }
-      // Si empieza con otro año (ej. "2025_"), es de una temporada pasada — se ignora
     });
     return { ok:true, count, totalRows: rows.length, error:null };
   } catch(e){
@@ -4912,13 +4699,12 @@ async function ligaLoadFromSupabase(){
   }
 }
 
-// ── ACTUALIZAR (liviano, solo recalcula — no toca nada del Mundial) ────────
 function ligaRefreshModel(){
   const myEpoch = COMP_EPOCH;
   const btn = document.getElementById('btnrun');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Actualizando...'; }
   setTimeout(()=>{
-    if(COMP_EPOCH!==myEpoch){ if(btn){ btn.disabled=false; } return; } // ya no estamos en LigaPro
+    if(COMP_EPOCH!==myEpoch){ if(btn){ btn.disabled=false; } return; }
     ligaRenderStandings();
     ligaRenderPartidos();
     if(IS_ADMIN) ligaRenderAdminInput();
@@ -4931,39 +4717,32 @@ function ligaRefreshModel(){
   }, 200);
 }
 
-// ── INIT ─────────────────────────────────────────────────────────────────
 async function ligaInitApp(){
   const myEpoch = COMP_EPOCH;
   ligaInitStr();
-  ligaLoadFromStorage();       // ← respaldo local primero (siempre disponible)
+  ligaLoadFromStorage();
 
-  // Igual que el Mundial: mostrar algo YA con lo que tengamos a mano,
-  // en vez de esperar a la nube antes de pintar nada.
   ligaRenderStandings();
   ligaRenderPartidos();
   if(IS_ADMIN) ligaRenderAdminInput();
 
   document.querySelectorAll('.tab').forEach(t=>{
-    t.style.display=''; // reset por si viene con estado previo
+    t.style.display='';
     if(t.textContent.includes('Bracket')) t.style.display='none';
     if(t.textContent.includes('Resultados') && !IS_ADMIN) t.style.display='none';
     if(t.textContent.includes('Grupos')) t.innerHTML='📊 Tabla';
     if(t.textContent.includes('Partidos')) t.innerHTML='📅 Partidos';
   });
 
-  // Ocultar el filtro de fases del Mundial (Grupos/R32/Octavos...) — no aplica a LigaPro
   const rfilt = document.getElementById('mundial-rfilt');
   if(rfilt) rfilt.style.display = 'none';
 
-  // El botón "Actualizar modelo" pasa a ser liviano y propio de LigaPro,
-  // en vez de correr el Monte Carlo pesado del Mundial
   const btn = document.getElementById('btnrun');
   if(btn){
     btn.onclick = ligaRefreshModel;
     btn.textContent = '🔄 Actualizar';
   }
 
-  // El botón "Sincronizar resultados" no aplica — LigaPro no tiene fuente automática
   const btnSync = document.getElementById('btn-sync');
   if(btnSync) btnSync.style.display = 'none';
 
@@ -4976,10 +4755,8 @@ async function ligaInitApp(){
 
   document.getElementById('hdr-sub').innerHTML = '☁️ Cargando resultados desde la nube...';
 
-  // Ahora sí, en segundo plano: traer la nube y avisar EN PANTALLA qué pasó
-  // (sin necesitar consola ni herramientas técnicas — esto se ve en cualquier celular)
   const result = await ligaLoadFromSupabase();
-  if(COMP_EPOCH!==myEpoch) return; // el usuario ya cambió de competición mientras cargaba
+  if(COMP_EPOCH!==myEpoch) return;
 
   ligaRenderStandings();
   ligaRenderPartidos();
@@ -4994,22 +4771,9 @@ async function ligaInitApp(){
     }
   }
 }
-
 // ═══════════════════════════════════════════════════════════════════════════
 // ── LIGA MX — MÓDULO (no modifica nada del Mundial ni de LigaPro) ──────────
 // ═══════════════════════════════════════════════════════════════════════════
-// Formato real de Liga MX: dos torneos cortos por año (Apertura y Clausura),
-// cada uno arranca DESDE CERO — a diferencia de LigaPro, los puntos NO se
-// arrastran de un torneo a otro. Por eso aquí separamos dos cosas:
-//   - LIGAMX_TD: estadísticas del Clausura 2026 (torneo recién terminado),
-//     usadas SOLO para calcular la fuerza inicial de cada equipo.
-//   - La tabla que ve el usuario en la app arranca en 0 puntos para los 18,
-//     porque el Apertura 2026 es un torneo nuevo.
-//
-// Atlante asciende reemplazando a Mazatlán — no tiene historial en Primera,
-// así que su fuerza inicial se calcula con descuento sobre su temporada en
-// Liga de Expansión (dominante, pero el salto de categoría es grande).
-
 const LIGAMX_SEASON = 'AP2026';
 
 const LIGAMX_TEAMS = [
@@ -5018,8 +4782,6 @@ const LIGAMX_TEAMS = [
   "Necaxa","Puebla","Santos","Atlante"
 ];
 
-// Estadísticas del Clausura 2026 (17 jornadas) — SOLO para fuerza inicial,
-// no se muestran como tabla actual.
 const LIGAMX_TD = {
   "Pumas":             {pj:17, pts:36, gf:34, ga:17, titles:7},
   "Chivas":             {pj:17, pts:36, gf:33, ga:17, titles:12},
@@ -5038,13 +4800,9 @@ const LIGAMX_TD = {
   "Necaxa":             {pj:17, pts:18, gf:19, ga:25, titles:3},
   "Puebla":             {pj:17, pts:13, gf:13, ga:26, titles:2},
   "Santos":             {pj:17, pts:12, gf:20, ga:38, titles:5},
-  // Atlante: sin historial en Primera — se usa su temporada en Liga de
-  // Expansión (14 PJ, 30 pts, 35 GF, 10 GA) con descuento por el salto de
-  // categoría, aplicado directamente en ligamxInitStr().
   "Atlante":            {pj:14, pts:30, gf:35, ga:10, titles:0, promoted:true}
 };
 
-// Corners reales (promedio por partido, fuente: APWin, temporada 2025/26)
 const LIGAMX_CORNER_FAVOR = {
   "América":5.95, "Chivas":5.85, "Toluca":5.64, "Cruz Azul":5.57, "Tigres":5.45,
   "León":5.00, "Necaxa":4.85, "Puebla":4.68, "Pachuca":4.65, "Monterrey":4.47,
@@ -5058,16 +4816,14 @@ const LIGAMX_CORNER_CONTRA = {
   "Toluca":3.71, "América":3.45, "Chivas":3.23
 };
 
-// Tarjetas reales (TA + RC, fuente: ESPN México), convertidas a índice 1-10
 const LIGAMX_CARD_IDX = {
   "Santos":7.5, "Puebla":6.38, "Querétaro":6.38, "Tigres":6.28, "Tijuana":6.28,
   "Pachuca":6.10, "Toluca":6.10, "Necaxa":6.0, "Atlas":6.0, "Pumas":5.90,
   "León":5.62, "Cruz Azul":5.62, "Chivas":5.72, "Atlético San Luis":5.54,
   "FC Juárez":5.54, "América":5.0, "Monterrey":4.5,
-  "Atlante":5.7 // sin historial en Primera — valor promedio de la liga
+  "Atlante":5.7
 };
 
-// Calendario Jornada 1 del Apertura 2026 (18-19 julio se ajustó a lo confirmado)
 const LIGAMX_FIXTURES = {
   "Jornada 1": [
     {ta:"Necaxa",     tb:"Atlante",   date:"2026-07-16"},
@@ -5129,8 +4885,6 @@ function ligamxInitStr(){
     let str = Math.max(0.05, Math.min(0.98,
       0.50*ligamxNorm(ppg,0,3) + 0.30*ligamxNorm(gdpg,-2,2) + 0.20*(prestige/0.15)*0.20
     ));
-    // Descuento por salto de categoría para equipos recién ascendidos —
-    // por muy dominante que haya sido en Segunda, no arranca como favorito.
     if(d.promoted) str = Math.min(str, 0.32);
     LIGAMX_STR[n] = str;
   }
@@ -5162,9 +4916,6 @@ function ligamxXgCalc(ta, tb, u){
   const sa = u[ta] ?? LIGAMX_STR[ta], sb = u[tb] ?? LIGAMX_STR[tb];
   const da = LIGAMX_TD[ta], db = LIGAMX_TD[tb], af = ap(sa, sb);
   let gfA = da.gf/da.pj, gaA = da.ga/da.pj, gfB = db.gf/db.pj, gaB = db.ga/db.pj;
-  // Mismo criterio que el descuento de fuerza: un equipo recién ascendido no puede
-  // aparecer como mejor ataque/defensa que el promedio de la liga solo por haber
-  // dominado en Segunda — se limita a, como mucho, un nivel modesto de Primera.
   const LIGAMX_AVG_GF = 1.35, LIGAMX_AVG_GA = 1.35;
   if(da.promoted){ gfA = Math.min(gfA, LIGAMX_AVG_GF*0.85); gaA = Math.max(gaA, LIGAMX_AVG_GA*1.15); }
   if(db.promoted){ gfB = Math.min(gfB, LIGAMX_AVG_GF*0.85); gaB = Math.max(gaB, LIGAMX_AVG_GA*1.15); }
@@ -5204,7 +4955,6 @@ function ligamxMatchAnal(ta, tb, u){
   };
 }
 
-// Corners esperados = promedio entre lo que genera A y lo que suele conceder B
 function ligamxCornerCalc(ta, tb){
   const faA = LIGAMX_CORNER_FAVOR[ta] ?? 4.6, faB = LIGAMX_CORNER_FAVOR[tb] ?? 4.6;
   const coA = LIGAMX_CORNER_CONTRA[ta] ?? 4.6, coB = LIGAMX_CORNER_CONTRA[tb] ?? 4.6;
@@ -5244,7 +4994,6 @@ function ligamxTeamForm(name){
   return played.slice(-3);
 }
 
-// ── TABLA DE POSICIONES — arranca en 0, el Apertura es un torneo nuevo ────
 function ligamxCalcStandings(){
   const rows = LIGAMX_TEAMS.map(n => ({name:n, pj:0, pts:0, gf:0, ga:0}));
   const byName = Object.fromEntries(rows.map(r=>[r.name,r]));
@@ -5442,7 +5191,6 @@ function ligamxRenderPartidos(){
   cont.innerHTML = html;
 }
 
-// ── MODAL DE ANÁLISIS COMPLETO ─────────────────────────────────────────────
 function ligamxOuTeamHtml(name, pScore, p15, p25){
   return '<div class="ou-team-block">'
     +'<div class="ou-team-name">'+name.split(' ')[0]+'</div>'
@@ -5709,7 +5457,6 @@ function ligamxSwitchModalTab(tab){
   });
 }
 
-// ── ENTRADA MANUAL DE RESULTADOS ────────────────────────────────────────────
 function ligamxIsMatchPast(dateStr){
   const d = new Date(dateStr+'T00:00:00');
   const today = new Date(); today.setHours(23,59,59,0);
@@ -5812,7 +5559,6 @@ async function ligamxSaveAll(){
   }
 }
 
-// ── RESPALDO LOCAL (localStorage) ──────────────────────────────────────────
 const LIGAMX_LS_KEY = 'ligamx_results';
 
 function ligamxSaveToStorage(){
@@ -5852,7 +5598,6 @@ async function ligamxLoadFromSupabase(){
         LIGAMX_RR[clave] = [r.goles_local, r.goles_visita];
         count++;
       }
-      // Si es de otra temporada (ej. Clausura futuro), se ignora a propósito.
     });
     return { ok:true, count, totalRows: rows.length, error:null };
   } catch(e){
@@ -5861,7 +5606,6 @@ async function ligamxLoadFromSupabase(){
   }
 }
 
-// ── ACTUALIZAR (liviano) ────────────────────────────────────────────────────
 function ligamxRefreshModel(){
   const myEpoch = COMP_EPOCH;
   const btn = document.getElementById('btnrun');
@@ -5880,13 +5624,11 @@ function ligamxRefreshModel(){
   }, 200);
 }
 
-// ── INIT ─────────────────────────────────────────────────────────────────
 async function ligamxInitApp(){
   const myEpoch = COMP_EPOCH;
   ligamxInitStr();
   ligamxLoadFromStorage();
 
-  // Igual que LigaPro y el Mundial: mostrar algo YA con lo que tengamos a mano
   ligamxRenderStandings();
   ligamxRenderPartidos();
   if(IS_ADMIN) ligamxRenderAdminInput();
@@ -5935,10 +5677,9 @@ async function ligamxInitApp(){
     }
   }
 }
-
-// ══════════════════════════════════════════════════════════════════════════
-// MÓDULO BRASILEIRÃO 2026
-// ══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// ── BRASILEIRÃO — MÓDULO (no modifica nada del Mundial, LigaPro ni Liga MX) ─
+// ═══════════════════════════════════════════════════════════════════════════
 const BRASIL_SEASON = '2026';
 
 const BRASIL_TEAMS = [
@@ -5947,9 +5688,6 @@ const BRASIL_TEAMS = [
   "Vitória","Internacional","Santos","Grêmio","Vasco da Gama","Remo","Mirassol","Chapecoense"
 ];
 
-// Tabla real tras la pausa por el Mundial (fuente: ESPN, 17-18 jornadas según equipo)
-// Se usa tanto para la fuerza inicial como base de la tabla en vivo (misma
-// temporada larga de todo el año, a diferencia de Liga MX que reinicia por torneo).
 const BRASIL_TD = {
   "Palmeiras":            {pj:18, pts:41, gf:30, ga:13, titles:12},
   "Flamengo":             {pj:17, pts:34, gf:31, ga:16, titles:8},
@@ -5968,16 +5706,11 @@ const BRASIL_TD = {
   "Santos":               {pj:18, pts:21, gf:26, ga:29, titles:8},
   "Grêmio":               {pj:18, pts:21, gf:20, ga:23, titles:2},
   "Vasco da Gama":        {pj:18, pts:20, gf:22, ga:29, titles:4},
-  // Remo: recién ascendido tras 32 años — pero ya lleva 18 jornadas reales
-  // jugadas esta misma temporada en Serie A, así que sus datos ya reflejan su
-  // nivel real en Primera (no hace falta el descuento que sí usamos en Liga MX
-  // para Atlante, que arrancaba sin ningún partido jugado en la categoría).
   "Remo":                 {pj:18, pts:18, gf:21, ga:29, titles:0},
   "Mirassol":             {pj:17, pts:16, gf:18, ga:24, titles:0},
   "Chapecoense":          {pj:17, pts:9,  gf:17, ga:33, titles:0}
 };
 
-// Corners reales (promedio por partido, fuente: WinDrawWin, temporada 2026)
 const BRASIL_CORNER_FAVOR = {
   "Internacional":7.0, "São Paulo":6.3, "Mirassol":5.6, "Palmeiras":5.9,
   "Red Bull Bragantino":5.3, "Fluminense":5.3, "Cruzeiro":5.1, "Vasco da Gama":5.2,
@@ -5993,7 +5726,6 @@ const BRASIL_CORNER_CONTRA = {
   "Cruzeiro":3.8, "Fluminense":3.8, "Vasco da Gama":3.7, "Internacional":3.7
 };
 
-// Tarjetas reales (TA + RCx2 por partido, fuente: ESPN), convertidas a índice 1-10
 const BRASIL_CARD_IDX = {
   "Santos":7.5, "Botafogo":6.88, "Flamengo":6.88, "Red Bull Bragantino":6.86,
   "Corinthians":6.77, "Mirassol":6.53, "Vitória":6.09, "Bahia":5.97,
@@ -6003,8 +5735,6 @@ const BRASIL_CARD_IDX = {
   "Atlético-MG":4.5
 };
 
-// Calendario Rodadas 19 a 24 (el Brasileirão ya llevaba 18 jornadas antes
-// de la pausa por el Mundial — retomamos justo donde se quedó)
 const BRASIL_FIXTURES = {
   "Rodada 19": [
     {ta:"Botafogo",     tb:"Santos",              date:"2026-07-16"},
@@ -6160,7 +5890,6 @@ function brasilMatchAnal(ta, tb, u){
   };
 }
 
-// Corners esperados = promedio entre lo que genera A y lo que suele conceder B
 function brasilCornerCalc(ta, tb){
   const faA = BRASIL_CORNER_FAVOR[ta] ?? 4.6, faB = BRASIL_CORNER_FAVOR[tb] ?? 4.6;
   const coA = BRASIL_CORNER_CONTRA[ta] ?? 4.6, coB = BRASIL_CORNER_CONTRA[tb] ?? 4.6;
@@ -6200,7 +5929,6 @@ function brasilTeamForm(name){
   return played.slice(-3);
 }
 
-// ── TABLA DE POSICIONES — arranca en 0, el Apertura es un torneo nuevo ────
 function brasilCalcStandings(){
   // A diferencia de Liga MX (que reinicia en 0 cada torneo), el Brasileirão es
   // una temporada larga y continua — partimos de la tabla real ya jugada
@@ -6239,9 +5967,13 @@ function brasilRenderStandings(){
     <th class="r">GF</th><th class="r">GA</th><th class="r">DG</th></tr></thead><tbody>`;
   rows.forEach((r,i)=>{
     const dg = r.gf-r.ga;
+    let badge = '';
+    if(i<4) badge = '<span style="font-size:9px;background:#d4edda;color:#1a5e34;border-radius:3px;padding:1px 5px;margin-left:5px">Libertadores</span>';
+    else if(i<6) badge = '<span style="font-size:9px;background:#e8f4fd;color:#1565c0;border-radius:3px;padding:1px 5px;margin-left:5px">Sudamericana</span>';
+    else if(i>=16) badge = '<span style="font-size:9px;background:#fde8e8;color:#c00;border-radius:3px;padding:1px 5px;margin-left:5px">Descenso</span>';
     html += `<tr>
-      <td style="font-weight:600;color:#333">${i+1}</td>
-      <td style="font-weight:500;cursor:pointer" onclick="brasilOpenTeamProfile('${r.name}')">${r.name}</td>
+      <td style="font-weight:600;color:${i<4?'#1a5e34':(i>=16?'#c00':'#333')}">${i+1}</td>
+      <td style="font-weight:500;cursor:pointer" onclick="brasilOpenTeamProfile('${r.name}')">${r.name}${badge}</td>
       <td class="r">${r.pj}</td><td class="r"><strong>${r.pts}</strong></td>
       <td class="r">${r.gf}</td><td class="r">${r.ga}</td>
       <td class="r">${dg>0?'+':''}${dg}</td>
@@ -6410,7 +6142,6 @@ function brasilRenderPartidos(){
   cont.innerHTML = html;
 }
 
-// ── MODAL DE ANÁLISIS COMPLETO ─────────────────────────────────────────────
 function brasilOuTeamHtml(name, pScore, p15, p25){
   return '<div class="ou-team-block">'
     +'<div class="ou-team-name">'+name.split(' ')[0]+'</div>'
@@ -6578,7 +6309,7 @@ function brasilOpenMatchModal(key){
         <div style="text-align:center"><div style="font-size:11px;color:#888;margin-bottom:6px">${m.ta}</div>${brasilFormDots(formA)}</div>
         <div style="text-align:center"><div style="font-size:11px;color:#888;margin-bottom:6px">${m.tb}</div>${brasilFormDots(formB)}</div>
       </div>
-      <p style="font-size:10px;color:#aaa;margin-top:8px">Solo refleja partidos ingresados desde el arranque del Brasileirão 2026.</p>
+      <p style="font-size:10px;color:#aaa;margin-top:8px">Solo refleja partidos ingresados desde el arranque de esta pretemporada de seguimiento (Rodada 19 en adelante).</p>
     </div>`;
 
   const cornersHtml = `
@@ -6677,7 +6408,6 @@ function brasilSwitchModalTab(tab){
   });
 }
 
-// ── ENTRADA MANUAL DE RESULTADOS ────────────────────────────────────────────
 function brasilIsMatchPast(dateStr){
   const d = new Date(dateStr+'T00:00:00');
   const today = new Date(); today.setHours(23,59,59,0);
@@ -6706,7 +6436,7 @@ function brasilRenderAdminInput(){
   if(!cont) return;
   const fechaKeys = Object.keys(BRASIL_FIXTURES);
   let html = `<div style="background:#fffbea;border:1.5px solid #f5c518;border-radius:10px;padding:10px 14px;margin-bottom:1rem;font-size:12px;color:#856404">
-    💡 Brasileirão no tiene sincronización automática — el calendario se actualiza a mano cada semana, e ingresa cada resultado apenas se juegue.
+    💡 Liga MX no tiene sincronización automática — el calendario se actualiza a mano cada semana, e ingresa cada resultado apenas se juegue.
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
     <button onclick="brasilSaveAll()" id="brasil-save-all-btn" style="padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500;font-size:13px">💾 Guardar todos los resultados</button>
@@ -6780,7 +6510,6 @@ async function brasilSaveAll(){
   }
 }
 
-// ── RESPALDO LOCAL (localStorage) ──────────────────────────────────────────
 const BRASIL_LS_KEY = 'brasil_results';
 
 function brasilSaveToStorage(){
@@ -6820,7 +6549,6 @@ async function brasilLoadFromSupabase(){
         BRASIL_RR[clave] = [r.goles_local, r.goles_visita];
         count++;
       }
-      // Si es de otra temporada (ej. Clausura futuro), se ignora a propósito.
     });
     return { ok:true, count, totalRows: rows.length, error:null };
   } catch(e){
@@ -6829,7 +6557,6 @@ async function brasilLoadFromSupabase(){
   }
 }
 
-// ── ACTUALIZAR (liviano) ────────────────────────────────────────────────────
 function brasilRefreshModel(){
   const myEpoch = COMP_EPOCH;
   const btn = document.getElementById('btnrun');
@@ -6848,13 +6575,11 @@ function brasilRefreshModel(){
   }, 200);
 }
 
-// ── INIT ─────────────────────────────────────────────────────────────────
 async function brasilInitApp(){
   const myEpoch = COMP_EPOCH;
   brasilInitStr();
   brasilLoadFromStorage();
 
-  // Igual que LigaPro y el Mundial: mostrar algo YA con lo que tengamos a mano
   brasilRenderStandings();
   brasilRenderPartidos();
   if(IS_ADMIN) brasilRenderAdminInput();
