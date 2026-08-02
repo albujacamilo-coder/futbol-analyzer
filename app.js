@@ -7578,3 +7578,58 @@ async function mlsInitApp(){
     }
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CEREBRO DE SESIÓN (Paso 2) — detecta si hay un usuario logueado.
+// Por ahora SOLO detecta e informa; todavía NO cambia qué se muestra (eso es el Paso 3).
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Cliente de Supabase para login (reutiliza la URL y clave ya definidas arriba)
+let sbAuth = null;
+try {
+  sbAuth = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+} catch(e) {
+  console.warn('No se pudo iniciar Supabase Auth:', e);
+}
+
+// Aquí guardamos quién está logueado (o null si nadie)
+let USUARIO_ACTUAL = null;
+
+// Etiqueta temporal de PRUEBA en la esquina, solo para comprobar que funciona.
+// (Se quita en el Paso 3, cuando conectemos esto al contenido real.)
+function _mostrarEtiquetaSesionPrueba(){
+  let b = document.getElementById('sesion-debug-badge');
+  if(!b){
+    b = document.createElement('div');
+    b.id = 'sesion-debug-badge';
+    b.style.cssText = 'position:fixed;bottom:10px;left:10px;z-index:99999;font-size:11px;font-family:monospace;padding:6px 10px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.15)';
+    document.body.appendChild(b);
+  }
+  if(USUARIO_ACTUAL){
+    b.style.background = '#d4edda'; b.style.color = '#1a5e34';
+    b.textContent = '🔓 Sesión activa: ' + USUARIO_ACTUAL;
+  } else {
+    b.style.background = '#f8d7da'; b.style.color = '#842029';
+    b.textContent = '🔒 Sin sesión (visitante)';
+  }
+}
+
+// Revisa si hay sesión activa y actualiza el estado
+async function revisarSesionUsuario(){
+  if(!sbAuth) return;
+  try {
+    const { data: { session } } = await sbAuth.auth.getSession();
+    USUARIO_ACTUAL = (session && session.user) ? session.user.email : null;
+  } catch(e){
+    USUARIO_ACTUAL = null;
+    console.warn('Error revisando sesión:', e);
+  }
+  console.log('[Sesión] Usuario actual:', USUARIO_ACTUAL);
+  _mostrarEtiquetaSesionPrueba();
+}
+
+// Al cargar la página, y cada vez que cambie el login
+window.addEventListener('load', revisarSesionUsuario);
+if(sbAuth){
+  sbAuth.auth.onAuthStateChange(function(){ revisarSesionUsuario(); });
+}
