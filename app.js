@@ -1831,6 +1831,7 @@ function closeMatchModal(){
 }
 
 function switchModalTab(tab){
+  if((tab==='corners'||tab==='tarjetas'||tab==='upset') && !IS_PRO){ showPremiumModal(); return; }
   const tabs=['goles','corners','tarjetas','upset'];
   tabs.forEach(function(t){
     const btn=document.getElementById('mtab-'+t);
@@ -4525,6 +4526,7 @@ function ligaOpenMatchModal(key){
 }
 
 function ligaSwitchModalTab(tab){
+  if((tab==='corners'||tab==='tarjetas'||tab==='upset') && !IS_PRO){ showPremiumModal(); return; }
   ['goles','corners','tarjetas','upset'].forEach(t=>{
     const btn = document.getElementById('liga-mtab-'+t);
     const content = document.getElementById('liga-mtab-content-'+t);
@@ -5451,6 +5453,7 @@ function ligamxOpenMatchModal(key){
 }
 
 function ligamxSwitchModalTab(tab){
+  if((tab==='corners'||tab==='tarjetas'||tab==='upset') && !IS_PRO){ showPremiumModal(); return; }
   ['goles','corners','tarjetas','upset'].forEach(t=>{
     const btn = document.getElementById('ligamx-mtab-'+t);
     const content = document.getElementById('ligamx-mtab-content-'+t);
@@ -6405,6 +6408,7 @@ function brasilOpenMatchModal(key){
 }
 
 function brasilSwitchModalTab(tab){
+  if((tab==='corners'||tab==='tarjetas'||tab==='upset') && !IS_PRO){ showPremiumModal(); return; }
   ['goles','corners','tarjetas','upset'].forEach(t=>{
     const btn = document.getElementById('brasil-mtab-'+t);
     const content = document.getElementById('brasil-mtab-content-'+t);
@@ -7349,6 +7353,7 @@ function mlsOpenMatchModal(key){
 }
 
 function mlsSwitchModalTab(tab){
+  if((tab==='corners'||tab==='tarjetas'||tab==='upset') && !IS_PRO){ showPremiumModal(); return; }
   ['goles','corners','tarjetas','upset'].forEach(t=>{
     const btn = document.getElementById('mls-mtab-'+t);
     const content = document.getElementById('mls-mtab-content-'+t);
