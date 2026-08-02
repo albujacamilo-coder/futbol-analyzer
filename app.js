@@ -7595,6 +7595,9 @@ try {
 // Aquí guardamos quién está logueado (o null si nadie)
 let USUARIO_ACTUAL = null;
 
+// Aquí guardamos el nivel del usuario: 'gratis' | 'base' | 'pro'
+let NIVEL_USUARIO = 'gratis';
+
 // Etiqueta temporal de PRUEBA en la esquina, solo para comprobar que funciona.
 // (Se quita en el Paso 3, cuando conectemos esto al contenido real.)
 function _mostrarEtiquetaSesionPrueba(){
@@ -7607,14 +7610,37 @@ function _mostrarEtiquetaSesionPrueba(){
   }
   if(USUARIO_ACTUAL){
     b.style.background = '#d4edda'; b.style.color = '#1a5e34';
-    b.textContent = '🔓 Sesión activa: ' + USUARIO_ACTUAL;
+    b.textContent = '🔓 ' + USUARIO_ACTUAL + '  ·  nivel: ' + NIVEL_USUARIO.toUpperCase();
   } else {
     b.style.background = '#f8d7da'; b.style.color = '#842029';
-    b.textContent = '🔒 Sin sesión (visitante)';
+    b.textContent = '🔒 Sin sesión (visitante)  ·  nivel: GRATIS';
   }
 }
 
-// Revisa si hay sesión activa y actualiza el estado
+// Consulta la tabla 'suscripciones' para saber el NIVEL del usuario logueado.
+// Devuelve 'gratis' si no hay usuario, no tiene fila, o su plan ya venció.
+async function consultarNivelUsuario(){
+  NIVEL_USUARIO = 'gratis';
+  if(!sbAuth || !USUARIO_ACTUAL) return;
+  try {
+    const { data, error } = await sbAuth
+      .from('suscripciones')
+      .select('nivel, pagado_hasta')
+      .eq('email', USUARIO_ACTUAL)
+      .maybeSingle();
+    if(error){ console.warn('Error consultando nivel:', error.message); return; }
+    if(data && data.pagado_hasta){
+      const vigente = new Date(data.pagado_hasta) > new Date();
+      if(vigente && (data.nivel === 'base' || data.nivel === 'pro')){
+        NIVEL_USUARIO = data.nivel;
+      }
+    }
+  } catch(e){
+    console.warn('Error consultando nivel:', e);
+  }
+}
+
+// Revisa si hay sesión activa y su nivel, y actualiza el estado
 async function revisarSesionUsuario(){
   if(!sbAuth) return;
   try {
@@ -7624,7 +7650,8 @@ async function revisarSesionUsuario(){
     USUARIO_ACTUAL = null;
     console.warn('Error revisando sesión:', e);
   }
-  console.log('[Sesión] Usuario actual:', USUARIO_ACTUAL);
+  await consultarNivelUsuario();
+  console.log('[Sesión] Usuario:', USUARIO_ACTUAL, '· Nivel:', NIVEL_USUARIO);
   _mostrarEtiquetaSesionPrueba();
 }
 
