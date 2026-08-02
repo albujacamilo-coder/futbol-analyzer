@@ -17,6 +17,9 @@ try { localStorage.removeItem(ADMIN_LS_KEY); } catch(e) {}
 // ── SISTEMA DE ACCESO PREMIUM ─────────────────────────────────────────────────
 // IS_PREMIUM: true si admin, si tiene código válido guardado, o si es modo preview
 let IS_PREMIUM = IS_ADMIN;
+// IS_PRO: true si admin o si el usuario tiene nivel 'pro' (para córners/tarjetas).
+// Se enciende también desde el login/suscripción (ver cerebro de sesión al final).
+let IS_PRO = IS_ADMIN;
 
 // Verificar código guardado en localStorage al cargar
 const SAVED_CODE = localStorage.getItem('fsp_access_code');
@@ -7651,7 +7654,12 @@ async function revisarSesionUsuario(){
     console.warn('Error revisando sesión:', e);
   }
   await consultarNivelUsuario();
-  console.log('[Sesión] Usuario:', USUARIO_ACTUAL, '· Nivel:', NIVEL_USUARIO);
+  // Conectar el nivel con los interruptores de la app.
+  // SOLO encendemos (nunca apagamos), para no pisar el acceso admin ni el
+  // sistema de códigos que sigue activo por ahora (migración segura).
+  if(NIVEL_USUARIO === 'base' || NIVEL_USUARIO === 'pro'){ IS_PREMIUM = true; }
+  if(NIVEL_USUARIO === 'pro'){ IS_PRO = true; }
+  console.log('[Sesión] Usuario:', USUARIO_ACTUAL, '· Nivel:', NIVEL_USUARIO, '· IS_PREMIUM:', IS_PREMIUM, '· IS_PRO:', IS_PRO);
   _mostrarEtiquetaSesionPrueba();
 }
 
