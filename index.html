@@ -20,11 +20,12 @@
 <!-- ── PANTALLA DE INICIO ── -->
 <div id="home-screen" style="display:block">
   <div class="app">
-    <div class="hdr">
+    <div class="hdr" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
       <div>
         <h1>⚽ Análisis de Fútbol</h1>
         <p style="font-size:12px;color:#666">Pronósticos y probabilidades para cada partido</p>
       </div>
+      <button id="btn-cuenta" onclick="abrirPanelCuenta()" style="font-size:12px;padding:8px 14px;border:1.5px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-family:inherit;white-space:nowrap;font-weight:500;flex-shrink:0">Iniciar sesión</button>
     </div>
 
     <!-- Botón de instalación PWA -->
