@@ -70,6 +70,13 @@ async function verifyCode(code){
 
 // Mostrar modal de ingreso de código
 function showPremiumModal(){
+  // ── Paso 4 · sub-paso B3 ──────────────────────────────────────────────
+  // Todos los candados ahora abren la nueva pantalla de cuenta/planes.
+  // El código viejo de abajo (modal de códigos) queda inactivo y se
+  // eliminará en la limpieza final de la migración.
+  abrirPanelCuenta();
+  return;
+
   const existing = document.getElementById('premium-modal');
   if(existing) existing.remove();
 
