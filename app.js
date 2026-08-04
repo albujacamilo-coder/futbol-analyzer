@@ -4756,6 +4756,7 @@ async function ligaInitApp(){
   if(btn){
     btn.onclick = ligaRefreshModel;
     btn.textContent = '🔄 Actualizar';
+    btn.style.display = IS_ADMIN ? '' : 'none';
   }
 
   const btnSync = document.getElementById('btn-sync');
@@ -5664,6 +5665,7 @@ async function ligamxInitApp(){
   if(btn){
     btn.onclick = ligamxRefreshModel;
     btn.textContent = '🔄 Actualizar';
+    btn.style.display = IS_ADMIN ? '' : 'none';
   }
   const btnSync = document.getElementById('btn-sync');
   if(btnSync) btnSync.style.display = 'none';
@@ -6619,6 +6621,7 @@ async function brasilInitApp(){
   if(btn){
     btn.onclick = brasilRefreshModel;
     btn.textContent = '🔄 Actualizar';
+    btn.style.display = IS_ADMIN ? '' : 'none';
   }
   const btnSync = document.getElementById('btn-sync');
   if(btnSync) btnSync.style.display = 'none';
@@ -7564,6 +7567,7 @@ async function mlsInitApp(){
   if(btn){
     btn.onclick = mlsRefreshModel;
     btn.textContent = '🔄 Actualizar';
+    btn.style.display = IS_ADMIN ? '' : 'none';
   }
   const btnSync = document.getElementById('btn-sync');
   if(btnSync) btnSync.style.display = 'none';
