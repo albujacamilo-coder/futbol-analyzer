@@ -7799,8 +7799,72 @@ async function cerrarSesionCuenta(){
 }
 
 // Placeholders temporales (se conectan en pasos siguientes)
-// Punto de entrada del login desde el panel (se conecta de verdad en el sub-paso C)
-function iniciarSesionDesdePanel(){ alert('El inicio de sesión se conecta en el siguiente paso 🙂'); }
+// Muestra un modal para iniciar sesión por enlace mágico (Paso 4 · sub-paso C).
+function iniciarSesionDesdePanel(){
+  const cuenta = document.getElementById('cuenta-modal');
+  if(cuenta) cuenta.remove();
+  const prev = document.getElementById('login-modal');
+  if(prev) prev.remove();
+
+  const html = `<div class="modal-box" style="max-width:420px">
+    <div class="modal-hdr">
+      <div style="width:100%"><div class="modal-title">Iniciar sesión</div></div>
+      <button class="modal-close" onclick="document.getElementById('login-modal').remove()" style="position:absolute;top:12px;right:12px">&#x2715;</button>
+    </div>
+    <div class="modal-section" style="padding-top:0">
+      <p style="font-size:13px;color:#555;margin:0 0 14px">Escribe tu correo y te enviaremos un enlace mágico. Haz clic en él y entrarás sin contraseña.</p>
+      <input id="login-email" type="email" placeholder="tucorreo@ejemplo.com" autocomplete="email" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #ddd;border-radius:8px;outline:none;box-sizing:border-box" onkeydown="if(event.key==='Enter') enviarEnlaceMagico()">
+      <button id="login-send-btn" onclick="enviarEnlaceMagico()" style="width:100%;margin-top:12px;padding:11px;font-size:14px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500">Enviar enlace mágico →</button>
+      <div id="login-msg" style="display:none;margin-top:12px;font-size:13px;line-height:1.5;padding:10px 12px;border-radius:8px"></div>
+    </div>
+  </div>`;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'login-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem';
+  overlay.innerHTML = html;
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  const inp = document.getElementById('login-email');
+  if(inp) inp.focus();
+}
+
+// Envía el enlace mágico al correo escrito.
+async function enviarEnlaceMagico(){
+  const inp = document.getElementById('login-email');
+  const btn = document.getElementById('login-send-btn');
+  const msg = document.getElementById('login-msg');
+  if(!inp) return;
+  const email = inp.value.trim();
+  function showMsg(txt, tipo){
+    if(!msg) return;
+    msg.style.display = 'block';
+    msg.textContent = txt;
+    if(tipo === 'ok'){ msg.style.background = '#d4edda'; msg.style.color = '#1a5e34'; }
+    else if(tipo === 'err'){ msg.style.background = '#f8d7da'; msg.style.color = '#842029'; }
+    else { msg.style.background = '#e8f4fd'; msg.style.color = '#1565c0'; }
+  }
+  if(!email || !email.includes('@')){ showMsg('Por favor escribe un correo válido.', 'err'); return; }
+  if(!sbAuth){ showMsg('No se pudo conectar. Intenta más tarde.', 'err'); return; }
+  if(btn){ btn.disabled = true; btn.textContent = 'Enviando...'; }
+  showMsg('Enviando el enlace...', 'info');
+  try {
+    const { error } = await sbAuth.auth.signInWithOtp({
+      email: email,
+      options: { emailRedirectTo: window.location.origin + window.location.pathname }
+    });
+    if(error){
+      showMsg('Ups, algo falló: ' + error.message, 'err');
+      if(btn){ btn.disabled = false; btn.textContent = 'Enviar enlace mágico →'; }
+    } else {
+      showMsg('📩 ¡Listo! Revisa tu correo (y la carpeta de spam) y haz clic en el enlace para entrar.', 'ok');
+      if(btn){ btn.textContent = 'Enlace enviado ✓'; }
+    }
+  } catch(e){
+    showMsg('Ups, algo falló. Intenta de nuevo.', 'err');
+    if(btn){ btn.disabled = false; btn.textContent = 'Enviar enlace mágico →'; }
+  }
+}
 function _placeholderPagoCuenta(plan){ alert('El pago del plan ' + plan.toUpperCase() + ' se conecta en el Paso 5 🙂'); }
 
 // Formatea una fecha ISO a algo legible en español, ej: "31 dic 2026"
