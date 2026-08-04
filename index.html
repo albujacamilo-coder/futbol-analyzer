@@ -17,15 +17,17 @@
 </head>
 <body>
 
+<!-- Botón de cuenta flotante (siempre visible, en todas las pantallas) -->
+<button id="btn-cuenta" onclick="abrirPanelCuenta()" style="position:fixed;top:12px;right:12px;z-index:500;font-size:12px;padding:8px 14px;border:1.5px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-family:inherit;white-space:nowrap;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,.12)">Iniciar sesión</button>
+
 <!-- ── PANTALLA DE INICIO ── -->
 <div id="home-screen" style="display:block">
   <div class="app">
-    <div class="hdr" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+    <div class="hdr">
       <div>
         <h1>⚽ Análisis de Fútbol</h1>
         <p style="font-size:12px;color:#666">Pronósticos y probabilidades para cada partido</p>
       </div>
-      <button id="btn-cuenta" onclick="abrirPanelCuenta()" style="font-size:12px;padding:8px 14px;border:1.5px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-family:inherit;white-space:nowrap;font-weight:500;flex-shrink:0">Iniciar sesión</button>
     </div>
 
     <!-- Botón de instalación PWA -->
