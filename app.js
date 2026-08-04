@@ -7649,6 +7649,20 @@ async function revisarSesionUsuario(){
   if(NIVEL_USUARIO === 'base' || NIVEL_USUARIO === 'pro'){ IS_PREMIUM = true; }
   if(NIVEL_USUARIO === 'pro'){ IS_PRO = true; }
   console.log('[Sesión] Usuario:', USUARIO_ACTUAL, '· Nivel:', NIVEL_USUARIO, '· IS_PREMIUM:', IS_PREMIUM, '· IS_PRO:', IS_PRO);
+  actualizarBotonCuenta();
+}
+
+// Actualiza el botón de la cabecera según si hay sesión (Paso 4, sub-paso A)
+function actualizarBotonCuenta(){
+  const btn = document.getElementById('btn-cuenta');
+  if(!btn) return;
+  btn.textContent = USUARIO_ACTUAL ? '👤 Mi cuenta' : 'Iniciar sesión';
+}
+
+// Abre el panel de cuenta / planes.
+// (Por ahora es un aviso temporal; el panel real se construye en el sub-paso B.)
+function abrirPanelCuenta(){
+  alert('Aquí irá tu cuenta y los planes. Lo construimos en el siguiente paso 🙂');
 }
 
 // Al cargar la página, y cada vez que cambie el login
