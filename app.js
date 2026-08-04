@@ -7659,11 +7659,126 @@ function actualizarBotonCuenta(){
   btn.textContent = USUARIO_ACTUAL ? '👤 Mi cuenta' : 'Iniciar sesión';
 }
 
-// Abre el panel de cuenta / planes.
-// (Por ahora es un aviso temporal; el panel real se construye en el sub-paso B.)
+// Abre el panel de cuenta / planes (Paso 4, sub-paso B).
 function abrirPanelCuenta(){
-  alert('Aquí irá tu cuenta y los planes. Lo construimos en el siguiente paso 🙂');
+  const existing = document.getElementById('cuenta-modal');
+  if(existing){ existing.remove(); return; }
+
+  const loggedIn = !!USUARIO_ACTUAL;
+  const nivel = loggedIn ? NIVEL_USUARIO : 'gratis';
+
+  // --- Panel de cuenta (arriba) ---
+  let cuentaHtml;
+  if(loggedIn){
+    const nivelLabel = nivel === 'pro' ? 'Pro' : (nivel === 'base' ? 'Base' : 'Gratis');
+    const nivelColor = nivel === 'pro' ? '#6b4fbb' : (nivel === 'base' ? '#2563eb' : '#666');
+    cuentaHtml = `<div style="background:#f9f9f9;border:1px solid #eee;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:50%;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:18px">👤</div>
+        <div>
+          <div style="font-size:14px;font-weight:500;word-break:break-all">${USUARIO_ACTUAL}</div>
+          <div style="font-size:12px;color:#888;margin-top:2px">Plan <span style="color:${nivelColor};font-weight:600">${nivelLabel}</span></div>
+        </div>
+      </div>
+      <button onclick="cerrarSesionCuenta()" style="font-size:12px;padding:7px 12px;border:1.5px solid #f1aeb5;background:#fff;color:#842029;border-radius:8px;cursor:pointer;font-family:inherit">Cerrar sesión</button>
+    </div>`;
+  } else {
+    cuentaHtml = `<div style="background:#f9f9f9;border:1px solid #eee;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">
+      <div style="font-size:13px;color:#555;margin-bottom:10px">Inicia sesión para ver tu plan y suscribirte</div>
+      <button onclick="_placeholderLoginCuenta()" style="font-size:13px;padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500">Iniciar sesión</button>
+    </div>`;
+  }
+
+  // --- helpers para los botones de cada plan ---
+  function btnPlan(plan){
+    if(nivel === plan && loggedIn){
+      return `<button disabled style="width:100%;margin-top:12px;padding:10px;font-size:13px;border:1px solid #ddd;background:#f5f5f5;color:#999;border-radius:8px;font-family:inherit">Tu plan actual</button>`;
+    }
+    if(plan === 'gratis'){
+      return `<button disabled style="width:100%;margin-top:12px;padding:10px;font-size:13px;border:1px solid #ddd;background:#f5f5f5;color:#999;border-radius:8px;font-family:inherit">Gratis</button>`;
+    }
+    const color = plan === 'pro' ? '#6b4fbb' : '#2563eb';
+    const label = plan === 'pro' ? 'Suscribirme a Pro' : 'Suscribirme a Base';
+    return `<button onclick="_placeholderPagoCuenta('${plan}')" style="width:100%;margin-top:12px;padding:10px;font-size:13px;background:${color};color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500">${label}</button>`;
+  }
+  const ok = '<span style="color:#16a34a;margin-right:6px">✓</span>';
+  const no = '<span style="color:#ccc;margin-right:6px">✕</span>';
+  const st = '<span style="color:#6b4fbb;margin-right:6px">⭐</span>';
+  const li = (t)=>`<div style="padding:3px 0;font-size:12.5px;color:#333">${t}</div>`;
+
+  const html = `<div class="modal-box" style="max-width:660px;max-height:90vh;overflow-y:auto">
+    <div class="modal-hdr">
+      <div style="width:100%">
+        <div class="modal-title">Tu cuenta y planes</div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('cuenta-modal').remove()" style="position:absolute;top:12px;right:12px">&#x2715;</button>
+    </div>
+
+    <div class="modal-section" style="padding-top:0">
+      ${cuentaHtml}
+
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:#f0fdf4;border-radius:8px;padding:10px 14px;margin-bottom:16px">
+        <span style="font-size:16px">⚽</span>
+        <span style="font-size:12px;color:#1a5e34;text-align:center">Todas las ligas, presentes y futuras, incluidas en todos los planes. Pagas por profundidad de análisis, no por más fútbol.</span>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+
+        <div style="flex:1;min-width:180px;background:#fff;border:1px solid #eee;border-radius:12px;padding:16px">
+          <div style="font-size:15px;font-weight:600">Gratis</div>
+          <div style="font-size:22px;font-weight:600;margin:4px 0 12px">$0</div>
+          ${li(ok+'Probabilidades de victoria')}
+          ${li(ok+'Marcador xG')}
+          ${li(ok+'Aciertos del modelo (%)')}
+          ${li(no+'Análisis de goles')}
+          ${li(no+'Córners y tarjetas')}
+          ${btnPlan('gratis')}
+        </div>
+
+        <div style="flex:1;min-width:180px;background:#fff;border:2px solid #2563eb;border-radius:12px;padding:16px;position:relative">
+          <span style="position:absolute;top:-10px;left:16px;background:#dbeafe;color:#1e40af;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600">Más popular</span>
+          <div style="font-size:15px;font-weight:600">Base</div>
+          <div style="font-size:22px;font-weight:600;margin:4px 0 12px">$4.99<span style="font-size:12px;color:#888;font-weight:400">/mes</span></div>
+          ${li(ok+'Todo lo de Gratis')}
+          ${li(ok+'Análisis de goles completo')}
+          ${li(ok+'Over/Under y BTTS')}
+          ${li(ok+'Aciertos detallado')}
+          ${li(no+'Córners y tarjetas')}
+          ${btnPlan('base')}
+        </div>
+
+        <div style="flex:1;min-width:180px;background:#fff;border:1px solid #d8ccf0;border-radius:12px;padding:16px">
+          <div style="font-size:15px;font-weight:600;color:#6b4fbb">Pro</div>
+          <div style="font-size:22px;font-weight:600;margin:4px 0 12px">$9.99<span style="font-size:12px;color:#888;font-weight:400">/mes</span></div>
+          ${li(ok+'Todo lo de Base')}
+          ${li(ok+'Córners completos')}
+          ${li(ok+'Tarjetas completas')}
+          ${li(ok+'Análisis de sorpresa')}
+          ${li(st+'Nuevos mercados apenas salgan')}
+          ${btnPlan('pro')}
+        </div>
+
+      </div>
+    </div>
+  </div>`;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'cuenta-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  overlay.innerHTML = html;
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
+
+// Cierra la sesión del usuario y recarga.
+async function cerrarSesionCuenta(){
+  if(sbAuth){ try { await sbAuth.auth.signOut(); } catch(e){ console.warn(e); } }
+  location.reload();
+}
+
+// Placeholders temporales (se conectan en pasos siguientes)
+function _placeholderLoginCuenta(){ alert('El inicio de sesión se conecta en el siguiente paso 🙂'); }
+function _placeholderPagoCuenta(plan){ alert('El pago del plan ' + plan.toUpperCase() + ' se conecta en el Paso 5 🙂'); }
 
 // Al cargar la página, y cada vez que cambie el login
 window.addEventListener('load', revisarSesionUsuario);
