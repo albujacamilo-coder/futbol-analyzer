@@ -7606,6 +7606,9 @@ let USUARIO_ACTUAL = null;
 // Aquí guardamos el nivel del usuario: 'gratis' | 'base' | 'pro'
 let NIVEL_USUARIO = 'gratis';
 
+// Fecha hasta la que el plan está vigente (o null si gratis / sin plan)
+let VIGENCIA_HASTA = null;
+
 // (La etiqueta de prueba se eliminó al terminar el Paso 3: el contenido ya
 //  refleja el nivel del usuario, así que el medidor temporal ya no hace falta.)
 
@@ -7613,6 +7616,7 @@ let NIVEL_USUARIO = 'gratis';
 // Devuelve 'gratis' si no hay usuario, no tiene fila, o su plan ya venció.
 async function consultarNivelUsuario(){
   NIVEL_USUARIO = 'gratis';
+  VIGENCIA_HASTA = null;
   if(!sbAuth || !USUARIO_ACTUAL) return;
   try {
     const { data, error } = await sbAuth
@@ -7625,6 +7629,7 @@ async function consultarNivelUsuario(){
       const vigente = new Date(data.pagado_hasta) > new Date();
       if(vigente && (data.nivel === 'base' || data.nivel === 'pro')){
         NIVEL_USUARIO = data.nivel;
+        VIGENCIA_HASTA = data.pagado_hasta;
       }
     }
   } catch(e){
@@ -7666,18 +7671,20 @@ function abrirPanelCuenta(){
 
   const loggedIn = !!USUARIO_ACTUAL;
   const nivel = loggedIn ? NIVEL_USUARIO : 'gratis';
+  const rank = { gratis:0, base:1, pro:2 };
 
   // --- Panel de cuenta (arriba) ---
   let cuentaHtml;
   if(loggedIn){
     const nivelLabel = nivel === 'pro' ? 'Pro' : (nivel === 'base' ? 'Base' : 'Gratis');
     const nivelColor = nivel === 'pro' ? '#6b4fbb' : (nivel === 'base' ? '#2563eb' : '#666');
+    const vig = (VIGENCIA_HASTA && nivel !== 'gratis') ? ' · vigente hasta ' + _fmtFecha(VIGENCIA_HASTA) : '';
     cuentaHtml = `<div style="background:#f9f9f9;border:1px solid #eee;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:12px">
         <div style="width:40px;height:40px;border-radius:50%;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:18px">👤</div>
         <div>
           <div style="font-size:14px;font-weight:500;word-break:break-all">${USUARIO_ACTUAL}</div>
-          <div style="font-size:12px;color:#888;margin-top:2px">Plan <span style="color:${nivelColor};font-weight:600">${nivelLabel}</span></div>
+          <div style="font-size:12px;color:#888;margin-top:2px">Plan <span style="color:${nivelColor};font-weight:600">${nivelLabel}</span>${vig}</div>
         </div>
       </div>
       <button onclick="cerrarSesionCuenta()" style="font-size:12px;padding:7px 12px;border:1.5px solid #f1aeb5;background:#fff;color:#842029;border-radius:8px;cursor:pointer;font-family:inherit">Cerrar sesión</button>
@@ -7685,26 +7692,62 @@ function abrirPanelCuenta(){
   } else {
     cuentaHtml = `<div style="background:#f9f9f9;border:1px solid #eee;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">
       <div style="font-size:13px;color:#555;margin-bottom:10px">Inicia sesión para ver tu plan y suscribirte</div>
-      <button onclick="_placeholderLoginCuenta()" style="font-size:13px;padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500">Iniciar sesión</button>
+      <button onclick="iniciarSesionDesdePanel()" style="font-size:13px;padding:9px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500">Iniciar sesión</button>
     </div>`;
   }
 
-  // --- helpers para los botones de cada plan ---
-  function btnPlan(plan){
-    if(nivel === plan && loggedIn){
-      return `<button disabled style="width:100%;margin-top:12px;padding:10px;font-size:13px;border:1px solid #ddd;background:#f5f5f5;color:#999;border-radius:8px;font-family:inherit">Tu plan actual</button>`;
+  // --- botón de cada plan según el estado del usuario ---
+  function botonPlan(plan){
+    const accent = plan === 'pro' ? '#6b4fbb' : '#2563eb';
+    const disStyle = 'width:100%;margin-top:12px;padding:10px;font-size:13px;border:1px solid #ddd;background:#f5f5f5;color:#999;border-radius:8px;font-family:inherit';
+    const actStyle = `width:100%;margin-top:12px;padding:10px;font-size:13px;background:${accent};color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500`;
+    const actualStyle = 'width:100%;margin-top:12px;padding:10px;font-size:13px;border:1.5px solid #16a34a;background:#f0fdf4;color:#166534;border-radius:8px;font-family:inherit;font-weight:600';
+    if(!loggedIn){
+      if(plan === 'gratis') return `<button disabled style="${disStyle}">Incluido</button>`;
+      return `<button onclick="iniciarSesionDesdePanel()" style="${actStyle}">Inicia sesión para suscribirte</button>`;
     }
-    if(plan === 'gratis'){
-      return `<button disabled style="width:100%;margin-top:12px;padding:10px;font-size:13px;border:1px solid #ddd;background:#f5f5f5;color:#999;border-radius:8px;font-family:inherit">Gratis</button>`;
-    }
-    const color = plan === 'pro' ? '#6b4fbb' : '#2563eb';
-    const label = plan === 'pro' ? 'Suscribirme a Pro' : 'Suscribirme a Base';
-    return `<button onclick="_placeholderPagoCuenta('${plan}')" style="width:100%;margin-top:12px;padding:10px;font-size:13px;background:${color};color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500">${label}</button>`;
+    if(plan === nivel) return `<button disabled style="${actualStyle}">⭐ Tu plan actual</button>`;
+    if(rank[plan] < rank[nivel]) return `<button disabled style="${disStyle}">Incluido en tu plan</button>`;
+    const label = (nivel === 'base' && plan === 'pro') ? 'Subir a Pro' : ('Suscribirme a ' + (plan === 'pro' ? 'Pro' : 'Base'));
+    return `<button onclick="_placeholderPagoCuenta('${plan}')" style="${actStyle}">${label}</button>`;
   }
+
+  // --- tarjeta de plan (borde + etiqueta según si es el plan actual) ---
+  function tarjetaPlan(plan, titulo, precioHtml, features){
+    const esActual = loggedIn && nivel === plan;
+    let borde, badge = '';
+    if(esActual){
+      borde = '2px solid #16a34a';
+      badge = '<span style="position:absolute;top:-10px;left:16px;background:#dcfce7;color:#166534;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600">✓ Tu plan</span>';
+    } else if(plan === 'base'){
+      borde = '2px solid #2563eb';
+      badge = '<span style="position:absolute;top:-10px;left:16px;background:#dbeafe;color:#1e40af;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600">Más popular</span>';
+    } else if(plan === 'pro'){
+      borde = '1px solid #d8ccf0';
+    } else {
+      borde = '1px solid #eee';
+    }
+    const tituloColor = plan === 'pro' ? ';color:#6b4fbb' : '';
+    return `<div style="flex:1;min-width:180px;background:#fff;border:${borde};border-radius:12px;padding:16px;position:relative">
+      ${badge}
+      <div style="font-size:15px;font-weight:600${tituloColor}">${titulo}</div>
+      <div style="font-size:22px;font-weight:600;margin:4px 0 12px">${precioHtml}</div>
+      ${features}
+      ${botonPlan(plan)}
+    </div>`;
+  }
+
   const ok = '<span style="color:#16a34a;margin-right:6px">✓</span>';
   const no = '<span style="color:#ccc;margin-right:6px">✕</span>';
   const st = '<span style="color:#6b4fbb;margin-right:6px">⭐</span>';
   const li = (t)=>`<div style="padding:3px 0;font-size:12.5px;color:#333">${t}</div>`;
+
+  const featGratis = li(ok+'Probabilidades de victoria')+li(ok+'Marcador xG')+li(ok+'Aciertos del modelo (%)')+li(no+'Análisis de goles')+li(no+'Córners y tarjetas');
+  const featBase = li(ok+'Todo lo de Gratis')+li(ok+'Análisis de goles completo')+li(ok+'Over/Under y BTTS')+li(ok+'Aciertos detallado')+li(no+'Córners y tarjetas');
+  const featPro = li(ok+'Todo lo de Base')+li(ok+'Córners completos')+li(ok+'Tarjetas completas')+li(ok+'Análisis de sorpresa')+li(st+'Nuevos mercados apenas salgan');
+
+  const precioBase = '$4.99<span style="font-size:12px;color:#888;font-weight:400">/mes</span>';
+  const precioPro = '$9.99<span style="font-size:12px;color:#888;font-weight:400">/mes</span>';
 
   const html = `<div class="modal-box" style="max-width:660px;max-height:90vh;overflow-y:auto">
     <div class="modal-hdr">
@@ -7723,41 +7766,9 @@ function abrirPanelCuenta(){
       </div>
 
       <div style="display:flex;flex-wrap:wrap;gap:10px">
-
-        <div style="flex:1;min-width:180px;background:#fff;border:1px solid #eee;border-radius:12px;padding:16px">
-          <div style="font-size:15px;font-weight:600">Gratis</div>
-          <div style="font-size:22px;font-weight:600;margin:4px 0 12px">$0</div>
-          ${li(ok+'Probabilidades de victoria')}
-          ${li(ok+'Marcador xG')}
-          ${li(ok+'Aciertos del modelo (%)')}
-          ${li(no+'Análisis de goles')}
-          ${li(no+'Córners y tarjetas')}
-          ${btnPlan('gratis')}
-        </div>
-
-        <div style="flex:1;min-width:180px;background:#fff;border:2px solid #2563eb;border-radius:12px;padding:16px;position:relative">
-          <span style="position:absolute;top:-10px;left:16px;background:#dbeafe;color:#1e40af;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600">Más popular</span>
-          <div style="font-size:15px;font-weight:600">Base</div>
-          <div style="font-size:22px;font-weight:600;margin:4px 0 12px">$4.99<span style="font-size:12px;color:#888;font-weight:400">/mes</span></div>
-          ${li(ok+'Todo lo de Gratis')}
-          ${li(ok+'Análisis de goles completo')}
-          ${li(ok+'Over/Under y BTTS')}
-          ${li(ok+'Aciertos detallado')}
-          ${li(no+'Córners y tarjetas')}
-          ${btnPlan('base')}
-        </div>
-
-        <div style="flex:1;min-width:180px;background:#fff;border:1px solid #d8ccf0;border-radius:12px;padding:16px">
-          <div style="font-size:15px;font-weight:600;color:#6b4fbb">Pro</div>
-          <div style="font-size:22px;font-weight:600;margin:4px 0 12px">$9.99<span style="font-size:12px;color:#888;font-weight:400">/mes</span></div>
-          ${li(ok+'Todo lo de Base')}
-          ${li(ok+'Córners completos')}
-          ${li(ok+'Tarjetas completas')}
-          ${li(ok+'Análisis de sorpresa')}
-          ${li(st+'Nuevos mercados apenas salgan')}
-          ${btnPlan('pro')}
-        </div>
-
+        ${tarjetaPlan('gratis','Gratis','$0',featGratis)}
+        ${tarjetaPlan('base','Base',precioBase,featBase)}
+        ${tarjetaPlan('pro','Pro',precioPro,featPro)}
       </div>
     </div>
   </div>`;
@@ -7777,8 +7788,16 @@ async function cerrarSesionCuenta(){
 }
 
 // Placeholders temporales (se conectan en pasos siguientes)
-function _placeholderLoginCuenta(){ alert('El inicio de sesión se conecta en el siguiente paso 🙂'); }
+// Punto de entrada del login desde el panel (se conecta de verdad en el sub-paso C)
+function iniciarSesionDesdePanel(){ alert('El inicio de sesión se conecta en el siguiente paso 🙂'); }
 function _placeholderPagoCuenta(plan){ alert('El pago del plan ' + plan.toUpperCase() + ' se conecta en el Paso 5 🙂'); }
+
+// Formatea una fecha ISO a algo legible en español, ej: "31 dic 2026"
+function _fmtFecha(iso){
+  try {
+    return new Date(iso).toLocaleDateString('es', { day:'numeric', month:'short', year:'numeric' });
+  } catch(e){ return ''; }
+}
 
 // Al cargar la página, y cada vez que cambie el login
 window.addEventListener('load', revisarSesionUsuario);
